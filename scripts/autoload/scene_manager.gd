@@ -102,3 +102,4 @@ func is_transitioning() -> bool:
 
 func _on_scene_change_requested(scene_path: String) -> void:
 	change_scene_to_file(scene_path)
+

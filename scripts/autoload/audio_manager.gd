@@ -112,3 +112,4 @@ func unlock_audio() -> void:
 
 func is_audio_unlocked() -> bool:
 	return _audio_unlocked
+

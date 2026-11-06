@@ -30,3 +30,4 @@ func update(_delta: float) -> void:
 ## Called when input events occur while this state is active.
 func handle_input(_event: InputEvent) -> void:
 	pass
+

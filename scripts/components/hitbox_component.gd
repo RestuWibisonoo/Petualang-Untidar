@@ -26,3 +26,4 @@ func get_damage() -> int:
 
 func notify_hit(target: Area2D) -> void:
 	hit_landed.emit(target)
+

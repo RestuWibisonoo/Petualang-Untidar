@@ -81,3 +81,4 @@ func _update_ui() -> void:
 		pause_indicator.visible = GameManager.is_paused()
 	if autoload_label:
 		autoload_label.text = "Autoloads: EventBus, GameManager, AudioManager, SceneManager [ACTIVE]"
+

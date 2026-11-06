@@ -32,3 +32,4 @@ func apply_to_body(body: CharacterBody2D) -> void:
 
 func stop() -> void:
 	velocity = Vector2.ZERO
+

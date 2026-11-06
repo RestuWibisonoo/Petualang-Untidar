@@ -183,3 +183,4 @@ Dengan fondasi teknis yang telah stabil dan tervalidasi, proyek siap melangkah k
 2. Integrasi `ModularVisuals` (rigging 10 layer sprite pixel art tersinkronisasi 1 `AnimationPlayer`).
 3. Implementasi 8-arah pergerakan menggunakan FSM (`PlayerIdleState`, `PlayerMoveState`, `PlayerRollState`).
 4. Pembuatan virtual joystick sentuh responsif untuk kontrol Web & Android.
+

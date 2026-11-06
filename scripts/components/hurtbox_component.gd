@@ -57,3 +57,4 @@ func start_invulnerability(duration: float) -> void:
 func _on_invulnerability_timeout() -> void:
 	is_invulnerable = false
 	invulnerability_ended.emit()
+

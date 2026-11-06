@@ -82,3 +82,4 @@ theme_override_colors/font_color = Color(0.952941, 0.65098, 0.14902, 1)
 theme_override_font_sizes/font_size = 12
 text = "[ GAME PAUSED - PRESS ESC TO RESUME ]"
 horizontal_alignment = 1
+

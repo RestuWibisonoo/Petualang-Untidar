@@ -34,3 +34,4 @@ signal dialogue_ended
 
 func _ready() -> void:
 	print("[EventBus] Initialized.")
+

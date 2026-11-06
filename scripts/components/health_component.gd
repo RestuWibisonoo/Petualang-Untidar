@@ -54,3 +54,4 @@ func is_alive() -> bool:
 
 func get_health_ratio() -> float:
 	return float(current_health) / float(max_health)
+

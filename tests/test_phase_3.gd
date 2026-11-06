@@ -343,6 +343,15 @@ func test_scene_transitions_and_spawn_points() -> void:
 	assert_true(retrieved_spawn == &"test_spawn_point", "get_and_clear_spawn_point() returns correct ID")
 	assert_true(scene_manager.target_spawn_point_id == &"", "get_and_clear_spawn_point() clears spawn ID to empty")
 
+	# Test rejected transitions preserve spawn ID state
+	scene_manager.change_scene_with_spawn("res://scenes/invalid_non_existent_file.tscn", &"invalid_spawn_id", false)
+	assert_true(scene_manager.target_spawn_point_id == &"", "Invalid scene path rejected without modifying target_spawn_point_id")
+
+	scene_manager._is_transitioning = true
+	scene_manager.change_scene_with_spawn("res://scenes/world/building_test.tscn", &"blocked_spawn_id", false)
+	assert_true(scene_manager.target_spawn_point_id == &"", "Rejected transition due to _is_transitioning does not modify target_spawn_point_id")
+	scene_manager._is_transitioning = false
+
 	# Test WorldBase spawn positioning
 	var packed: PackedScene = load("res://scenes/world/outdoor_test.tscn")
 	var world: WorldBase = packed.instantiate() as WorldBase

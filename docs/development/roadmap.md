@@ -82,10 +82,10 @@
 ## Phase 3: World & Exploration
 
 * **Tujuan:** Membangun pipeline level dengan `TileMapLayer`, pengelompokan Y-Sort, pintu gerbang/transisi level, dan sistem interaksi objek lingkungan.
-* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated test suites: Unit 89/89 PASS, Runtime 69/69 PASS; Total proyek 276/276 assertions PASS tanpa galat)
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated test suites: Unit 91/91 PASS, Runtime 78/78 PASS; Total proyek 287/287 assertions PASS tanpa galat)
 * **Testing Coverage Breakdown:**
-  1. **Automated Unit & Component Tests (`tests/test_phase_3.gd`):** 89 assertions pass (struktur node, bitmask layer, interactable queue, panel dialog modal, input keyboard/touch, routing spawn).
-  2. **Runtime Integration & Physics Tests (`tests/runtime_validation_phase_3.gd`):** 69 assertions pass (multi-frame `move_and_slide()` collision, corner sliding, recursive Y-sort chain & footprint math, siklus produksi `SceneManager.change_scene_with_spawn()`, pembersihan spawn ID, pencegahan transisi ganda, pencegahan duplikasi instans).
+  1. **Automated Unit & Component Tests (`tests/test_phase_3.gd`):** 91 assertions pass (struktur node, bitmask layer, interactable queue, panel dialog modal, input keyboard/touch, routing spawn, spawn ID guard pada transisi ditolak).
+  2. **Runtime Integration & Physics Tests (`tests/runtime_validation_phase_3.gd`):** 78 assertions pass (multi-frame `move_and_slide()` collision, corner sliding, recursive Y-sort chain & footprint math, siklus produksi `SceneManager.change_scene_with_spawn()`, pencegahan race condition spawn ID pada pemanggilan ganda dan path tidak valid, pembersihan spawn ID, pencegahan duplikasi instans).
   3. **Manual Visual Tests:** Verifikasi rendering karakter di balik kanopi pohon, di depan batang pohon, di bawah `OverheadLayer`, kelancaran transisi fade, dan keterbacaan teks modal.
   4. **Android Physical-Device Tests:** **PENDING** (Emulasi sensor landscape & sentuh terverifikasi; pengujian hardware fisik smartphone dijadwalkan pada Phase 8).
 * **Dependencies:** Phase 1, Phase 2.

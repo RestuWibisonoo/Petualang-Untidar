@@ -32,8 +32,16 @@ func _setup_fade_overlay() -> void:
 
 
 func change_scene_with_spawn(scene_path: String, spawn_id: StringName = &"", with_fade: bool = true, duration: float = 0.3) -> void:
+	if _is_transitioning:
+		push_warning("[SceneManager] Scene change already in progress.")
+		return
+
+	if not ResourceLoader.exists(scene_path):
+		push_error("[SceneManager] Scene file does not exist: %s" % scene_path)
+		return
+
 	target_spawn_point_id = spawn_id
-	change_scene_to_file(scene_path, with_fade, duration)
+	_execute_scene_change_to_file(scene_path, with_fade, duration)
 
 
 func get_and_clear_spawn_point() -> StringName:
@@ -51,6 +59,11 @@ func change_scene_to_file(scene_path: String, with_fade: bool = true, duration: 
 		push_error("[SceneManager] Scene file does not exist: %s" % scene_path)
 		return
 
+	target_spawn_point_id = &""
+	_execute_scene_change_to_file(scene_path, with_fade, duration)
+
+
+func _execute_scene_change_to_file(scene_path: String, with_fade: bool, duration: float) -> void:
 	_is_transitioning = true
 
 	if with_fade and duration > 0.0:
@@ -80,6 +93,7 @@ func change_scene_to_packed(packed_scene: PackedScene, with_fade: bool = true, d
 		push_error("[SceneManager] PackedScene is null.")
 		return
 
+	target_spawn_point_id = &""
 	_is_transitioning = true
 
 	if with_fade and duration > 0.0:

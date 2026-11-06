@@ -23,7 +23,7 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 8. Pembuatan level prototipe Kampus Untidar: Area Halaman Luar (`outdoor_test.tscn`) dan Interior Gedung Kuliah Bersama (`building_test.tscn`).
 9. Integrasi kontrol sentuh (tombol `InteractButton` pada `TouchControls`) dan UI kontekstual `PromptLabel`.
 10. Integrasi penuh ke `scenes/main/main.tscn` sehingga eksekusi F5 langsung membuka dunia kampus interaktif.
-11. Pengujian terpisah: Automated unit tests (89 assertions), Runtime physics & SceneManager transition tests (69 assertions), Manual visual test, dan status pengujian fisik Android.
+11. Pengujian terpisah: Automated unit tests (91 assertions), Runtime physics & SceneManager transition tests (78 assertions), Manual visual test, dan status pengujian fisik Android.
 
 ---
 
@@ -36,7 +36,7 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 5. Membangun objek peti satu kali buka, panel pengumuman yang memunculkan teks lore kampus secara lengkap, dan pintu yang memicu transisi scene dengan fade visual.
 6. Mengimplementasikan perpindahan antar-area dengan penempatan posisi karakter ke node `Marker2D` yang sesuai.
 7. Menyediakan tombol interaksi pada HUD layar sentuh dan petunjuk tombol keyboard `[E]`.
-8. Memvalidasi seluruh implementasi melalui 89 assertion automated test dan 69 assertion runtime test di Phase 3 (total proyek 276 assertions lulus tanpa galat).
+8. Memvalidasi seluruh implementasi melalui 91 assertion automated test dan 78 assertion runtime test di Phase 3 (total proyek 287 assertions lulus tanpa galat).
 
 ---
 
@@ -60,8 +60,8 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 * `assets/objects/*.png`: 4 tekstur pixel art untuk objek dunia (`chest.png`, `board.png`, `door.png`, `tree.png`).
 * `scenes/world/outdoor_test.tscn`: Prototipe area halaman luar Kampus Untidar.
 * `scenes/world/building_test.tscn`: Prototipe interior Gedung Kuliah Bersama (GKB).
-* `tests/test_phase_3.gd`: Automated test suite untuk Phase 3 (89 assertions).
-* `tests/runtime_validation_phase_3.gd`: Runtime simulation test suite untuk fisika, Y-Sort, transisi scene produksi, dan UI (69 assertions).
+* `tests/test_phase_3.gd`: Automated test suite untuk Phase 3 (91 assertions).
+* `tests/runtime_validation_phase_3.gd`: Runtime simulation test suite untuk fisika, Y-Sort, transisi scene produksi, dan UI (78 assertions).
 
 ### B. File yang Dimodifikasi
 * `scripts/autoload/event_bus.gd`: Ditambahkan sinyal `info_panel_requested(title, content)` dan `info_panel_closed`.
@@ -234,12 +234,12 @@ Pengujian dibagi secara tegas menjadi 4 kategori pengujian:
 
 ### 13.1 Automated Component & Unit Tests (`tests/test_phase_3.gd`)
 Dijalankan via: `godot --headless -s tests/test_phase_3.gd`
-* **Hasil:** **89 assertions PASSED, 0 FAILED**.
-* Menguji: Struktur node semua scene level, ketersediaan layer, Y-sort enabled, collision bitmask, interaction queue, open/close InformationBoard, panel display & keyboard/touch close, chest one-time open, door parameter validation, spawn point routing logic, dan touch control hooks.
+* **Hasil:** **91 assertions PASSED, 0 FAILED**.
+* Menguji: Struktur node semua scene level, ketersediaan layer, Y-sort enabled, collision bitmask, interaction queue, open/close InformationBoard, panel display & keyboard/touch close, chest one-time open, door parameter validation, spawn point routing logic, touch control hooks, serta validasi preservasi spawn ID saat transisi ditolak atau path tidak valid.
 
 ### 13.2 Runtime Physics & Production Transition Simulation (`tests/runtime_validation_phase_3.gd`)
 Dijalankan via: `godot --headless -s tests/runtime_validation_phase_3.gd`
-* **Hasil:** **69 assertions PASSED, 0 FAILED**.
+* **Hasil:** **78 assertions PASSED, 0 FAILED**.
 * **A. Uji Fisika Collision & Corner Sliding (7 assertions):**
   * *Batang Pohon:* Karakter bergerak lurus ke utara menuju pohon di `(-120, 20)`. Berhenti di titik kontak presisi $Y = 24.0$ tanpa penetrasi ke batang ($Y < 23.5$).
   * *Batas Map:* Karakter bergerak ke barat menuju pembatas map di `X = -330`. Berhenti di $X = -314.0$.
@@ -259,22 +259,29 @@ Dijalankan via: `godot --headless -s tests/runtime_validation_phase_3.gd`
   * Status awal panel tertutup dan tidak terlihat.
   * Pemicuan interaksi berhasil membuka panel modal, menampilkan `board_title` dan `board_content` lengkap, menonaktifkan physics player, dan menonaktifkan interaksi pada papan (pencegahan spam).
   * Penutupan panel via `close_panel()` menutup modal secara bersih, menyembunyikan panel, mengembalikan physics player, dan mengaktifkan kembali interaktivitas papan.
-* **D. Uji Siklus Transisi Produksi SceneManager (32 assertions):**
+* **D. Uji Siklus Transisi Produksi & Proteksi Race Condition SceneManager (41 assertions):**
   * *Kesiapan Autoload:* `SceneManager` aktif di `PROCESS_MODE_ALWAYS` dengan overlay CanvasLayer 100 dan `FadeRect`.
   * *Spawn Awal:* Scene Outdoor dimuat sebagai `current_scene`. Pemain ditempatkan pada marker `default` $(0.0, 40.0)$. Spawn ID dikosongkan.
   * *Integritas SceneTree:* Terbukti hanya ada tepat 1 instans `WorldBase` di root dan 1 instans `Player` di scene tree.
   * *Transisi Outdoor $\to$ Building via `change_scene_with_spawn()`:*
     * `is_transitioning()` bernilai `true`. Target spawn ID disetel ke `&"from_outdoor"`.
     * `FadeRect.mouse_filter` berubah menjadi `MOUSE_FILTER_STOP` (memblokir input klik/sentuh selama fade-out).
-    * Panggilan transisi ganda (`change_scene_to_file`) ditolak dengan aman tanpa mengganggu transisi yang sedang berjalan.
+    * **Proteksi Race Condition:** Panggilan `change_scene_with_spawn()` kedua (dengan target conflicting spawn) ditolak dan terbukti **TIDAK menimpa** spawn ID aktif (`from_outdoor` tetap utuh).
+    * Panggilan `change_scene_to_file()` kedua ditolak tanpa mengubah `target_spawn_point_id`.
+    * Panggilan dengan path file tidak valid ditolak tanpa mengubah `target_spawn_point_id`.
     * Setelah transisi selesai, `current_scene` menjadi `BuildingTest`.
     * `is_transitioning()` kembali `false`.
     * Spawn ID berhasil dibersihkan (`&""`).
     * `FadeRect.mouse_filter` kembali `MOUSE_FILTER_IGNORE` dan opasitas alpha kembali 0.0.
     * Pemain diposisikan presisi pada marker `from_outdoor` $(0.0, 75.0)$ (bukan default).
     * Scene lama `OutdoorTest` terhapus bersih dari memori (tepat 1 instans `WorldBase` dan 1 `Player` tersisa).
+  * *Proteksi Path Tidak Valid Saat Idle:*
+    * Pemanggilan `change_scene_with_spawn` dengan path fiktif saat idle ditolak dengan aman (`ResourceLoader.exists == false`).
+    * `_is_transitioning` tetap `false` dan `target_spawn_point_id` tetap bersih (`&""`).
+    * Pemanggilan `change_scene_to_file` dengan path fiktif juga menjaga spawn ID tetap bersih.
   * *Transisi Balik Building $\to$ Outdoor via `change_scene_with_spawn()`:*
     * `is_transitioning()` bernilai `true`. Target spawn ID disetel ke `&"from_building"`.
+    * Panggilan conflicting spawn selama transisi balik ditolak dan tidak menimpa spawn ID.
     * Setelah transisi selesai, `current_scene` kembali `OutdoorTest`.
     * `is_transitioning()` kembali `false`. Spawn ID bersih (`&""`).
     * Pemain diposisikan presisi pada marker `from_building` $(0.0, -85.0)$ (bukan default).
@@ -306,9 +313,9 @@ Seluruh suite pengujian otomatis dijalankan berturut-turut untuk memastikan stab
 | :--- | :--- | :---: | :---: |
 | `tests/test_phase_1.gd` | Core Settings, Inputs, Autoloads, Components, FSM | 45 | **PASS (45/45)** |
 | `tests/test_phase_2.gd` | Player Entity, 8-Dir Move, ModularVisuals, Camera, Touch | 73 | **PASS (73/73)** |
-| `tests/test_phase_3.gd` | TileMapLayer, Y-Sort, Boundaries, Interaction, Doors, InfoDialog | 89 | **PASS (89/89)** |
-| `tests/runtime_validation_phase_3.gd` | Collision physics, corner sliding, recursive Y-sort, production scene loop | 69 | **PASS (69/69)** |
-| **TOTAL** | **Seluruh Fondasi Proyek Petualang Untidar** | **276** | **100% PASS** |
+| `tests/test_phase_3.gd` | TileMapLayer, Y-Sort, Boundaries, Interaction, Doors, InfoDialog, Spawn Guards | 91 | **PASS (91/91)** |
+| `tests/runtime_validation_phase_3.gd` | Collision physics, corner sliding, recursive Y-sort, production scene loop, race condition guards | 78 | **PASS (78/78)** |
+| **TOTAL** | **Seluruh Fondasi Proyek Petualang Untidar** | **287** | **100% PASS** |
 
 Pengujian eksekusi simulasi 60 frame `scenes/main/main.tscn` berhasil keluar dengan kode exit `0` tanpa error konsol.
 

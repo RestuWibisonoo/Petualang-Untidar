@@ -253,14 +253,23 @@ func test_runtime_scene_transition_loop() -> void:
 	# Step 2: Production Transition: Outdoor -> Building via change_scene_with_spawn()
 	scene_manager.change_scene_with_spawn("res://scenes/world/building_test.tscn", &"from_outdoor", true, 0.05)
 
-	# Validate immediate transition state
-	assert_true(scene_manager.is_transitioning() == true, "SceneManager.is_transitioning() is true during transition")
-	assert_true(scene_manager.target_spawn_point_id == &"from_outdoor", "Target spawn point ID set to 'from_outdoor'")
+	# 1. Transisi pertama diterima dan spawn ID tersimpan dengan benar
+	assert_true(scene_manager.is_transitioning() == true, "Transisi pertama diterima: SceneManager.is_transitioning() is true")
+	assert_true(scene_manager.target_spawn_point_id == &"from_outdoor", "Spawn ID transisi pertama tersimpan dengan benar ('from_outdoor')")
 	assert_true(fade_rect.mouse_filter == Control.MOUSE_FILTER_STOP, "FadeRect blocks mouse/touch input during fade-out")
 
-	# Validate double-transition prevention
-	scene_manager.change_scene_to_file("res://scenes/world/outdoor_test.tscn") # should be rejected
-	assert_true(scene_manager.target_spawn_point_id == &"from_outdoor", "Double transition call ignored, target remains 'from_outdoor'")
+	# 2. Pemanggilan change_scene_with_spawn() kedua ketika transisi pertama berlangsung ditolak
+	# 3. Spawn ID transisi pertama tidak berubah setelah permintaan kedua ditolak
+	scene_manager.change_scene_with_spawn("res://scenes/world/outdoor_test.tscn", &"conflicting_spawn", true, 0.05) # ditolak
+	assert_true(scene_manager.target_spawn_point_id == &"from_outdoor", "Spawn ID transisi pertama tidak berubah ('from_outdoor') setelah permintaan kedua ditolak")
+
+	# Uji juga pemanggilan change_scene_to_file() kedua selama transisi ditolak dan tidak mengubah target_spawn_point_id
+	scene_manager.change_scene_to_file("res://scenes/world/outdoor_test.tscn") # ditolak
+	assert_true(scene_manager.target_spawn_point_id == &"from_outdoor", "change_scene_to_file ditolak selama transisi dan tidak mengubah target_spawn_point_id")
+
+	# Uji juga pemanggilan dengan path tidak valid saat transisi tidak mengubah spawn ID aktif
+	scene_manager.change_scene_with_spawn("res://scenes/invalid_path.tscn", &"bogus_spawn", true, 0.05) # ditolak
+	assert_true(scene_manager.target_spawn_point_id == &"from_outdoor", "Permintaan dengan path tidak valid saat transisi tidak mengubah spawn ID aktif")
 
 	# Await transition duration + scene change + fade-in with a watchdog
 	var timeout_frames: int = 0
@@ -272,7 +281,9 @@ func test_runtime_scene_transition_loop() -> void:
 	var building: WorldBase = current_scene as WorldBase
 	assert_true(building != null and building.name == "BuildingTest", "Current scene is now BuildingTest")
 	assert_true(scene_manager.is_transitioning() == false, "SceneManager.is_transitioning() is false after transition completes")
-	assert_true(scene_manager.target_spawn_point_id == &"", "Spawn point ID cleaned up after ready (now empty)")
+
+	# 4. Setelah transisi selesai, spawn ID dibersihkan
+	assert_true(scene_manager.target_spawn_point_id == &"", "Setelah transisi selesai, spawn ID dibersihkan (empty)")
 	assert_true(fade_rect.mouse_filter == Control.MOUSE_FILTER_IGNORE, "FadeRect mouse_filter restored to IGNORE after fade-in")
 	assert_true(is_equal_approx(fade_rect.color.a, 0.0), "FadeRect opacity is 0.0 after fade-in")
 
@@ -284,11 +295,27 @@ func test_runtime_scene_transition_loop() -> void:
 	assert_true(_count_world_instances() == 1, "Old Outdoor scene freed: exactly 1 WorldBase instance remains")
 	assert_true(_count_player_instances() == 1, "Old Player freed: exactly 1 Player instance remains")
 
-	# Step 3: Production Return Transition: Building -> Outdoor via change_scene_with_spawn()
+	# 5. Permintaan dengan scene path tidak valid ketika IDLE tidak merusak spawn ID maupun state transisi
+	assert_true(scene_manager.is_transitioning() == false, "SceneManager idle sebelum uji path tidak valid")
+	assert_true(scene_manager.target_spawn_point_id == &"", "Spawn ID bersih sebelum uji path tidak valid")
+	scene_manager.change_scene_with_spawn("res://scenes/non_existent_scene.tscn", &"should_never_be_set")
+	assert_true(scene_manager.is_transitioning() == false, "Permintaan path tidak valid tidak memulai transisi (is_transitioning tetap false)")
+	assert_true(scene_manager.target_spawn_point_id == &"", "Permintaan path tidak valid tidak meninggalkan spawn ID kotor (tetap empty)")
+
+	# Uji juga change_scene_to_file dengan path tidak valid
+	scene_manager.change_scene_to_file("res://scenes/another_invalid_scene.tscn")
+	assert_true(scene_manager.is_transitioning() == false, "change_scene_to_file path tidak valid tidak memulai transisi")
+	assert_true(scene_manager.target_spawn_point_id == &"", "change_scene_to_file path tidak valid menjaga spawn ID tetap empty")
+
+	# 6. Transisi Building -> Outdoor tetap berhasil
 	scene_manager.change_scene_with_spawn("res://scenes/world/outdoor_test.tscn", &"from_building", true, 0.05)
 
 	assert_true(scene_manager.is_transitioning() == true, "SceneManager.is_transitioning() is true during return transition")
 	assert_true(scene_manager.target_spawn_point_id == &"from_building", "Target spawn point ID set to 'from_building'")
+
+	# Conflicting call during return transition
+	scene_manager.change_scene_with_spawn("res://scenes/world/building_test.tscn", &"conflicting_return_spawn", true, 0.05)
+	assert_true(scene_manager.target_spawn_point_id == &"from_building", "Spawn ID return transisi tidak tertimpa ('from_building')")
 
 	timeout_frames = 0
 	while scene_manager.is_transitioning() and timeout_frames < 60:

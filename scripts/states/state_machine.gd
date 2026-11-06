@@ -64,4 +64,4 @@ func transition_to(target_state_name: StringName, msg: Dictionary = {}) -> void:
 
 
 func get_current_state_name() -> StringName:
-	return current_state.name if current_state else &""
+	return StringName(current_state.name.to_lower()) if current_state else &""

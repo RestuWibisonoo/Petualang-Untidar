@@ -1,85 +1,133 @@
 [gd_scene format=3 uid="uid://c6xk4yp8qvq01"]
 
 [ext_resource type="Script" path="res://scenes/main/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/ui/touch_controls.tscn" id="3_touch"]
 
-[node name="Main" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_obs"]
+size = Vector2(64, 64)
+
+[node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
+[node name="TestArena" type="Node2D" parent="."]
+
+[node name="Background" type="ColorRect" parent="TestArena"]
+offset_left = -1000.0
+offset_top = -1000.0
+offset_right = 1000.0
+offset_bottom = 1000.0
+color = Color(0.0705882, 0.0901961, 0.133333, 1)
+
+[node name="GridLineX" type="ColorRect" parent="TestArena"]
+offset_left = -1000.0
+offset_top = -1.0
+offset_right = 1000.0
+offset_bottom = 1.0
+color = Color(0.14902, 0.188235, 0.262745, 1)
+
+[node name="GridLineY" type="ColorRect" parent="TestArena"]
+offset_left = -1.0
+offset_top = -1000.0
+offset_right = 1.0
+offset_bottom = 1000.0
+color = Color(0.14902, 0.188235, 0.262745, 1)
+
+[node name="Obstacle1" type="StaticBody2D" parent="TestArena"]
+position = Vector2(-120, -80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TestArena/Obstacle1"]
+shape = SubResource("RectangleShape2D_obs")
+
+[node name="ColorRect" type="ColorRect" parent="TestArena/Obstacle1"]
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.188235, 0.243137, 0.337255, 1)
+
+[node name="Obstacle2" type="StaticBody2D" parent="TestArena"]
+position = Vector2(120, 80)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TestArena/Obstacle2"]
+shape = SubResource("RectangleShape2D_obs")
+
+[node name="ColorRect" type="ColorRect" parent="TestArena/Obstacle2"]
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.188235, 0.243137, 0.337255, 1)
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+
+[node name="TouchControls" parent="." instance=ExtResource("3_touch")]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="MarginContainer" type="MarginContainer" parent="HUD"]
+anchors_preset = 10
 anchor_right = 1.0
-anchor_bottom = 1.0
+offset_bottom = 60.0
 grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.0705882, 0.0941176, 0.141176, 1)
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "PETUALANG UNTIDAR"
-horizontal_alignment = 1
-
-[node name="SubtitleLabel" type="Label" parent="CenterContainer/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.701961, 0.74902, 0.819608, 1)
-theme_override_font_sizes/font_size = 12
-text = "Phase 1: Project Foundation & Core Architecture"
-horizontal_alignment = 1
-
-[node name="HSeparator" type="HSeparator" parent="CenterContainer/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD/MarginContainer"]
 layout_mode = 2
 
-[node name="AutoloadLabel" type="Label" parent="CenterContainer/VBoxContainer"]
-unique_name_in_owner = true
+[node name="VBoxLeft" type="VBoxContainer" parent="HUD/MarginContainer/HBoxContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.298039, 0.686275, 0.313726, 1)
+theme_override_constants/separation = 2
+
+[node name="TitleLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 11
-text = "Autoloads: Checking..."
-horizontal_alignment = 1
+text = "PETUALANG UNTIDAR - PHASE 2"
 
-[node name="StateLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="StateLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.258824, 0.647059, 0.960784, 1)
-theme_override_font_sizes/font_size = 11
-text = "GameState: BOOT"
-horizontal_alignment = 1
-
-[node name="InputTestLabel" type="Label" parent="CenterContainer/VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85098, 0.85098, 0.85098, 1)
+theme_override_colors/font_color = Color(0.309804, 0.764706, 0.968627, 1)
 theme_override_font_sizes/font_size = 10
-text = "Press WASD, Space, J, E, I, C, Q, M or ESC to test input"
-horizontal_alignment = 1
+text = "Player State: IDLE"
 
-[node name="PauseIndicator" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="SpeedLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.505882, 0.780392, 0.517647, 1)
+theme_override_font_sizes/font_size = 10
+text = "Speed: 0.0 px/s"
+
+[node name="FacingLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.717647, 0.301961, 1)
+theme_override_font_sizes/font_size = 10
+text = "Facing: DOWN"
+
+[node name="Spacer" type="Control" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxRight" type="VBoxContainer" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HintLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxRight"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.666667, 0.666667, 0.666667, 1)
+theme_override_font_sizes/font_size = 9
+text = "WASD: 8-Dir Move | Space: Dodge | ESC: Pause"
+horizontal_alignment = 2
+
+[node name="PauseIndicator" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxRight"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(0.952941, 0.65098, 0.14902, 1)
-theme_override_font_sizes/font_size = 12
-text = "[ GAME PAUSED - PRESS ESC TO RESUME ]"
-horizontal_alignment = 1
-
+theme_override_colors/font_color = Color(1, 0.596078, 0, 1)
+theme_override_font_sizes/font_size = 10
+text = "[ GAME PAUSED ]"
+horizontal_alignment = 2

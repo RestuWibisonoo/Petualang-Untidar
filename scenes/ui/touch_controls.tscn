@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://b2745h6m7nx01"]
+
+[ext_resource type="Script" path="res://scripts/ui/touch/touch_controls.gd" id="1_touch"]
+[ext_resource type="Script" path="res://scripts/ui/touch/virtual_joystick.gd" id="2_joystick"]
+
+[node name="TouchControls" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_touch")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="JoystickMargin" type="MarginContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -116.0
+offset_right = 116.0
+grow_vertical = 0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VirtualJoystick" type="Control" parent="Root/JoystickMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+mouse_filter = 0
+script = ExtResource("2_joystick")
+
+[node name="ActionMargin" type="MarginContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -76.0
+offset_top = -76.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="DodgeButton" type="Button" parent="Root/ActionMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "DODGE"

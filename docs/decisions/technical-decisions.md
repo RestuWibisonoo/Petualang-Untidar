@@ -20,6 +20,8 @@
 | **ADR-008** | Arsitektur Data: Custom Resources (`.tres`) Berorientasi Tipe | **ADOPTED** | 2026-11-06 |
 | **ADR-009** | Pola Jaringan: Single-Player First dengan Decoupled Architecture | **ADOPTED** | 2026-11-06 |
 | **ADR-010** | Konvensi Struktur Direktori: Direct Root Modular | **ADOPTED** | 2026-11-06 |
+| **ADR-011** | Standar Kanvas Pixel Art Karakter 32x32 & Layout Spritesheet Seragam | **ADOPTED** | 2026-11-06 |
+| **ADR-012** | Virtual Touch Joystick & Touch Controls Input Layering | **ADOPTED** | 2026-11-06 |
 
 ---
 
@@ -160,4 +162,28 @@
 * **Alternatif yang Dipertimbangkan:**
   - *Nested `src/` structure:* Baik untuk proyek C++/Web tradisional, namun menambah kedalaman path yang tidak perlu pada ekosistem resource Godot.
 * **Konsekuensi:** Seluruh import path dan instansiasi scene mengacu pada struktur root tanpa `src/`.
+
+---
+
+### ADR-011: Standar Kanvas Pixel Art Karakter 32x32 & Layout Spritesheet Seragam
+
+* **Konteks:** Menentukan ukuran kanvas per frame untuk sistem kustomisasi modular 10 layer karakter agar proporsional pada viewport 640x360.
+* **Keputusan:** Menggunakan **Kanvas 32x32 piksel per frame**, grid 4 kolom × 4 baris (total sheet 128x128 piksel), dengan pivot bottom-center pada `(16, 28)`.
+* **Alasan Pemilihan:**
+  1. Pada resolusi 640x360, karakter setinggi ~26px menempati ~7.2% tinggi layar, memberikan bidang pandang eksplorasi luas khas top-down RPG 16-bit klasik.
+  2. Grid 4x4 (Down, Up, Right, Left) memungkinkan 1 `AnimationPlayer` memutar seluruh 10 layer tanpa pergeseran frame (*frame tearing*).
+  3. Menghemat konsumsi memori GPU pada platform Web dan Android low-end dibanding ukuran kanvas 48x48 atau 64x64.
+* **Konsekuensi:** Seluruh desainer grafis dan artis pixel art wajib mengikuti template grid 128x128 yang identik.
+
+---
+
+### ADR-012: Virtual Touch Joystick & Touch Controls Input Layering
+
+* **Konteks:** Pemain mobile (Android) dan web browser berbasis touchscreen membutuhkan kendali sentuh intuitif tanpa mengganggu input fisik keyboard/gamepad pada desktop.
+* **Keputusan:** Mengimplementasikan **TouchControls pada CanvasLayer independen (Layer 10)** dengan `TouchVirtualJoystick` yang dinamis mendeteksi ketersediaan layar sentuh (`DisplayServer.is_touchscreen_available()`).
+* **Alasan Pemilihan:**
+  1. Input sentuh menyuntikkan vektor ke metode `set_touch_input()` pada Player secara aman tanpa menimpa (`overwrite`) input action keyboard/gamepad.
+  2. Auto-hide otomatis menyembunyikan kontrol sentuh saat game dimainkan pada PC desktop berkursor mouse murni.
+  3. Memiliki deadzone dan normalisasi bawaan untuk pergerakan halus ke segala arah.
+* **Konsekuensi:** Komponen UI touch controls harus selalu diinstansiasi pada scene atau viewport yang menampung entitas pemain.
 

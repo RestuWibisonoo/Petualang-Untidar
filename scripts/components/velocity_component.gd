@@ -15,6 +15,8 @@ func accelerate_in_direction(direction: Vector2, delta: float) -> void:
 	if direction != Vector2.ZERO:
 		var target_velocity := direction.normalized() * max_speed
 		velocity = velocity.move_toward(target_velocity, acceleration * delta)
+		if velocity.length_squared() > max_speed * max_speed:
+			velocity = velocity.limit_length(max_speed)
 	else:
 		decelerate(delta)
 

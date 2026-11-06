@@ -13,7 +13,7 @@
 | Fase | Nama Fase | Status | Estimasi Urutan |
 | :---: | :--- | :---: | :---: |
 | **Phase 1** | Project Foundation | **COMPLETED** | 1 (Immediate Next) |
-| **Phase 2** | Character Foundation | **PLANNED** | 2 |
+| **Phase 2** | Character Foundation | **COMPLETED** | 2 |
 | **Phase 3** | World & Exploration | **PLANNED** | 3 |
 | **Phase 4** | Combat System | **PLANNED** | 4 |
 | **Phase 5** | Loot & Progression | **PLANNED** | 5 |
@@ -34,7 +34,7 @@
      - Pixel snapping: `snap_2d_transforms_to_pixel` & `snap_2d_vertices_to_pixel`.
      - Texture filtering: `Nearest` (`default_texture_filter=0`).
      - Konfigurasi Input Action mapping lengkap (8 arah, aksi, interaksi, pause).
-  2. Pembuatan struktur direktori proyek lengkap (`assets/`, `src/core/`, `src/autoload/`, `src/data/`, `src/entities/`, `src/ui/`, `src/world/`).
+  2. Pembuatan struktur direktori proyek lengkap (`assets/`, `scenes/`, `scripts/`, `resources/`, `docs/`, `tests/`).
   3. Pembuatan Autoload inti dengan interface dasar:
      - `EventBus.gd`
      - `GameManager.gd`
@@ -47,7 +47,7 @@
      - `HitboxComponent.gd` dan `HurtboxComponent.gd`
 * **Expected Deliverables:**
   - File `project.godot` yang telah dikonfigurasi pixel-perfect.
-  - Struktur folder bersih di `src/` dan `assets/`.
+  - Struktur folder bersih di `scenes/`, `scripts/`, `resources/`, dan `assets/`.
   - Autoload terdaftar dan aktif di scene tree.
   - Komponen inti siap pakai.
 * **Acceptance Criteria:**
@@ -60,7 +60,7 @@
 ## Phase 2: Character Foundation
 
 * **Tujuan:** Mengimplementasikan pergerakan 8 arah pemain yang responsif, visual controller modular (tubuh, rambut, pakaian, senjata), serta kontrol sentuh (Virtual Joystick).
-* **Status Pekerjaan:** **PLANNED**
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated test suite, 73/73 assertions pass)
 * **Dependencies:** Phase 1 (Project Foundation & Core Components).
 * **Daftar Pekerjaan:**
   1. Implementasi entity `player.tscn` dan `player.gd` berbasis `CharacterBody2D`.

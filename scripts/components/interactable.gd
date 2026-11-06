@@ -33,3 +33,4 @@ func interact(actor: Node) -> void:
 
 func get_interaction_text() -> String:
 	return interaction_text
+

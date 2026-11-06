@@ -233,7 +233,7 @@ func test_interactive_objects() -> void:
 
 	chest.queue_free()
 
-	# 2. Information Board
+	# 2. Information Board & Info Dialog Panel
 	var board_packed: PackedScene = load("res://scenes/objects/information_board.tscn")
 	assert_true(board_packed != null, "information_board.tscn loaded successfully")
 
@@ -242,13 +242,80 @@ func test_interactive_objects() -> void:
 
 	assert_true(board.board_title != "", "InformationBoard has board_title")
 	assert_true(board.board_content != "", "InformationBoard has board_content")
+	assert_true(board.is_reading == false, "InformationBoard initial is_reading = false")
 
 	var board_read_signal := [false]
 	board.read.connect(func(_actor: Node): board_read_signal[0] = true)
+
+	var panel_requested_signal := [false]
+	var event_bus: Node = get_root().get_node_or_null("EventBus")
+	if event_bus and event_bus.has_signal("info_panel_requested"):
+		event_bus.info_panel_requested.connect(func(_t: String, _c: String): panel_requested_signal[0] = true)
+
 	board.interactable.interact(board)
 	assert_true(board_read_signal[0], "InformationBoard interaction emits read signal")
+	assert_true(panel_requested_signal[0], "InformationBoard interaction emits info_panel_requested via EventBus")
+	assert_true(board.is_reading == true, "InformationBoard is_reading is true after interaction")
+	assert_true(board.interactable.is_interactable == false, "InformationBoard disables interaction while open to prevent spam")
+
+	# Test re-interaction prevention
+	var second_read_fired := [false]
+	board.read.connect(func(_actor: Node): second_read_fired[0] = true)
+	board.interactable.interact(board)
+	assert_true(second_read_fired[0] == false, "Second interaction is blocked while InformationBoard is open")
+
+	# Test close notification restores interactability
+	if event_bus and event_bus.has_signal("info_panel_closed"):
+		event_bus.info_panel_closed.emit()
+	assert_true(board.is_reading == false, "InformationBoard is_reading reset to false after info_panel_closed")
+	assert_true(board.interactable.is_interactable == true, "InformationBoard is_interactable restored to true after close")
 
 	board.queue_free()
+
+	# 2B. InfoDialogPanel Component
+	var panel_packed: PackedScene = load("res://scenes/ui/info_dialog_panel.tscn")
+	assert_true(panel_packed != null, "info_dialog_panel.tscn loaded successfully")
+
+	var panel: InfoDialogPanel = panel_packed.instantiate() as InfoDialogPanel
+	get_root().add_child(panel)
+
+	assert_true(panel.is_open() == false, "InfoDialogPanel initially closed")
+	assert_true(panel.visible == false, "InfoDialogPanel initially hidden")
+
+	var panel_opened_signal := [false]
+	panel.opened.connect(func(): panel_opened_signal[0] = true)
+	panel.open_panel("Judul Tes", "Isi konten pengumuman kampus lengkap.")
+
+	assert_true(panel.is_open() == true, "InfoDialogPanel is_open is true after open_panel")
+	assert_true(panel.visible == true, "InfoDialogPanel visible is true after open_panel")
+	assert_true(panel.title_label.text == "Judul Tes", "InfoDialogPanel displays correct title")
+	assert_true(panel.content_label.text.contains("Isi konten pengumuman"), "InfoDialogPanel displays correct content")
+	assert_true(panel_opened_signal[0], "InfoDialogPanel emitted opened signal")
+
+	# Test close via method
+	var panel_closed_signal := [false]
+	panel.closed.connect(func(): panel_closed_signal[0] = true)
+	panel.close_panel()
+
+	assert_true(panel.is_open() == false, "InfoDialogPanel is_open is false after close_panel")
+	assert_true(panel.visible == false, "InfoDialogPanel visible is false after close_panel")
+	assert_true(panel_closed_signal[0], "InfoDialogPanel emitted closed signal")
+
+	# Test close via touch button
+	panel.open_panel("Tes Tombol", "Konten tombol")
+	panel.close_button.pressed.emit()
+	assert_true(panel.is_open() == false, "InfoDialogPanel closed via touch CloseButton")
+
+	# Test close via keyboard unhandled input (ESC / interact key)
+	panel.open_panel("Tes Keyboard", "Konten keyboard")
+	var esc_event := InputEventKey.new()
+	esc_event.pressed = true
+	esc_event.keycode = KEY_ESCAPE
+	InputMap.action_add_event("pause", esc_event)
+	panel._unhandled_input(esc_event)
+	assert_true(panel.is_open() == false, "InfoDialogPanel closed via Escape / pause input")
+
+	panel.queue_free()
 
 	# 3. Door
 	var door_packed: PackedScene = load("res://scenes/objects/door.tscn")

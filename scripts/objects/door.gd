@@ -23,6 +23,10 @@ func _ready() -> void:
 func _on_interacted(actor: Node) -> void:
 	var scene_mgr := get_node_or_null("/root/SceneManager")
 	var event_bus := get_node_or_null("/root/EventBus")
+
+	if scene_mgr and scene_mgr.has_method("is_transitioning") and scene_mgr.is_transitioning():
+		return
+
 	if target_scene_path != "" and ResourceLoader.exists(target_scene_path):
 		door_entered.emit(actor, target_scene_path)
 		print("[Door] %s triggered transition to: %s (spawn: %s)" % [name, target_scene_path, target_spawn_id])

@@ -22,6 +22,7 @@ extends Node2D
 @onready var speed_label: Label = get_node_or_null("HUD/MarginContainer/HBoxContainer/VBoxLeft/SpeedLabel") as Label
 @onready var facing_label: Label = get_node_or_null("HUD/MarginContainer/HBoxContainer/VBoxLeft/FacingLabel") as Label
 @onready var pause_indicator: Label = get_node_or_null("HUD/MarginContainer/HBoxContainer/VBoxRight/PauseIndicator") as Label
+@onready var info_dialog: InfoDialogPanel = get_node_or_null("HUD/InfoDialogPanel") as InfoDialogPanel
 
 
 func _ready() -> void:
@@ -42,9 +43,21 @@ func _ready() -> void:
 	if player and player.interaction_component:
 		player.interaction_component.target_changed.connect(_on_interaction_target_changed)
 
+	# Ensure InfoDialogPanel exists in HUD
+	if not info_dialog and has_node("HUD"):
+		var panel_scene: PackedScene = load("res://scenes/ui/info_dialog_panel.tscn")
+		if panel_scene:
+			info_dialog = panel_scene.instantiate() as InfoDialogPanel
+			$HUD.add_child(info_dialog)
+
 	var event_bus := get_node_or_null("/root/EventBus")
-	if event_bus and event_bus.has_signal("show_floating_text"):
-		event_bus.show_floating_text.connect(_on_show_floating_text)
+	if event_bus:
+		if event_bus.has_signal("show_floating_text"):
+			event_bus.show_floating_text.connect(_on_show_floating_text)
+		if event_bus.has_signal("info_panel_requested"):
+			event_bus.info_panel_requested.connect(_on_info_panel_requested)
+		if event_bus.has_signal("info_panel_closed"):
+			event_bus.info_panel_closed.connect(_on_info_panel_closed)
 
 	var game_manager := get_node_or_null("/root/GameManager")
 	if game_manager and "current_state" in game_manager:
@@ -72,11 +85,29 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if info_dialog and info_dialog.is_open():
+		return
+
 	if event.is_action_pressed("pause"):
 		var game_manager := get_node_or_null("/root/GameManager")
 		if game_manager and game_manager.has_method("toggle_pause"):
 			game_manager.toggle_pause()
 		get_viewport().set_input_as_handled()
+
+
+func _on_info_panel_requested(title: String, content: String) -> void:
+	if info_dialog:
+		info_dialog.open_panel(title, content)
+		if prompt_label:
+			prompt_label.visible = false
+		if player:
+			player.velocity = Vector2.ZERO
+			player.set_physics_process(false)
+
+
+func _on_info_panel_closed() -> void:
+	if player:
+		player.set_physics_process(true)
 
 
 func _handle_spawn_point() -> void:

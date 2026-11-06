@@ -30,6 +30,8 @@ signal scene_change_requested(scene_path: String)
 # --- UI & Dialogue Signals ---
 signal dialogue_started(dialogue_id: StringName)
 signal dialogue_ended
+signal info_panel_requested(title: String, content: String)
+signal info_panel_closed
 
 
 func _ready() -> void:

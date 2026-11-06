@@ -33,3 +33,4 @@ interaction_text = "Baca Papan Informasi"
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Interactable"]
 position = Vector2(0, 4)
 shape = SubResource("CircleShape2D_trigger")
+

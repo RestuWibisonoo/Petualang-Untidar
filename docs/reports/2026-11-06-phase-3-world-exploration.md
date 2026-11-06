@@ -1,7 +1,7 @@
-# Implementation Report: Phase 3 — World & Exploration
+# Implementation Report: Phase 3 — World & Exploration (Reviewed & Fixed)
 
 - **Tanggal Pelaksanaan:** 2026-11-06
-- **Status:** COMPLETED
+- **Status:** COMPLETED & REVIEW VERIFIED
 - **Pelaksana:** Senior Godot Engineer, 2D Level Designer, Gameplay Programmer & Technical Lead
 - **Engine:** Godot Engine 4.7.2 (v4.7.2.stable.official.ed1daf0bf)
 - **Bahasa:** GDScript (Strict Typing 2.0)
@@ -12,17 +12,18 @@
 
 ## 1. Task Overview
 
-Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World & Exploration** untuk game *Petualang Untidar*. Lingkup pekerjaan meliputi:
+Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World & Exploration** untuk game *Petualang Untidar* serta menuntaskan seluruh poin audit review:
 1. Pembangunan arsitektur level 2D top-down berbasis `TileMapLayer` bertingkat sesuai standar Godot 4.3+/4.7.
 2. Pengelompokan dan penataan kedalaman visual (Y-Sort) untuk karakter pemain, rintangan solid, dan objek prop.
 3. Penetapan matriks tabrakan (*collision matrix*) untuk Layer 1 (World) dan Layer 8 (Interactables).
 4. Pembuatan komponen interaksi rekayasa bersih: `InteractionComponent` dan kontrak `Interactable`.
 5. Pembangunan tiga objek interaktif fungsional: Peti Harta (`TreasureChest`), Papan Pengumuman Kampus (`InformationBoard`), dan Pintu Antar-Ruangan (`Door`).
-6. Perluasan `SceneManager` dengan dukungan transisi scene berdasar ID Spawn Point (`change_scene_with_spawn`).
-7. Pembuatan level prototipe Kampus Untidar: Area Halaman Luar (`outdoor_test.tscn`) dan Interior Gedung Kuliah Bersama (`building_test.tscn`).
-8. Integrasi kontrol sentuh (tombol `InteractButton` pada `TouchControls`) dan UI kontekstual `PromptLabel`.
-9. Integrasi penuh ke `scenes/main/main.tscn` sehingga eksekusi F5 langsung membuka dunia kampus interaktif.
-10. Validasi komprehensif menggunakan automated test suite (`tests/test_phase_3.gd`) dengan 100% tingkat kelulusan regresi untuk Phase 1 dan Phase 2.
+6. **Perbaikan Information Board:** Membangun UI panel utuh (`InfoDialogPanel`) yang menampilkan judul dan isi teks lengkap, mendukung navigasi keyboard (ESC/E/Enter) serta sentuh (Close Button/Backdrop), dengan pencegahan interaksi berulang dan pembekuan karakter saat membaca.
+7. Perluasan `SceneManager` dengan dukungan transisi scene berdasar ID Spawn Point (`change_scene_with_spawn`) dan proteksi terhadap panggilan transisi ganda.
+8. Pembuatan level prototipe Kampus Untidar: Area Halaman Luar (`outdoor_test.tscn`) dan Interior Gedung Kuliah Bersama (`building_test.tscn`).
+9. Integrasi kontrol sentuh (tombol `InteractButton` pada `TouchControls`) dan UI kontekstual `PromptLabel`.
+10. Integrasi penuh ke `scenes/main/main.tscn` sehingga eksekusi F5 langsung membuka dunia kampus interaktif.
+11. Pengujian terpisah: Automated unit tests (89 assertions), Runtime physics & loop tests (33 assertions), Manual visual test, dan status pengujian fisik Android.
 
 ---
 
@@ -32,10 +33,10 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 2. Menerapkan Y-Sort matematis presisi tanpa *frame tearing* atau anomali kedalaman saat karakter bergerak di depan atau di belakang objek.
 3. Memastikan batas dunia (*world boundaries*) memagari pergerakan pemain secara kokoh tanpa glitch penembusan dinding.
 4. Menerapkan sistem interaksi terpisah pada Collision Layer 8 (Value 128) yang memprioritaskan objek terdekat via kalkulasi jarak kuadrat Euclidean.
-5. Membangun objek peti satu kali buka, papan pengumuman yang memunculkan lore kampus, dan pintu yang memicu transisi scene dengan fade visual.
+5. Membangun objek peti satu kali buka, panel pengumuman yang memunculkan teks lore kampus secara lengkap, dan pintu yang memicu transisi scene dengan fade visual.
 6. Mengimplementasikan perpindahan antar-area dengan penempatan posisi karakter ke node `Marker2D` yang sesuai.
 7. Menyediakan tombol interaksi pada HUD layar sentuh dan petunjuk tombol keyboard `[E]`.
-8. Memvalidasi seluruh implementasi melalui 69 assertion automated test di Phase 3 dan memastikan 187 assertion test total proyek lulus tanpa galat.
+8. Memvalidasi seluruh implementasi melalui 89 assertion automated test dan 33 assertion runtime test di Phase 3 (total proyek 240 assertions lulus tanpa galat).
 
 ---
 
@@ -49,6 +50,8 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 * `scenes/objects/treasure_chest.tscn`: Scene peti harta dengan sprite buka/tutup dan komponen `Interactable`.
 * `scripts/objects/information_board.gd`: Script controller papan pengumuman kampus (`class_name InformationBoard`).
 * `scenes/objects/information_board.tscn`: Scene papan pengumuman dengan teks lore Untidar dan `Interactable`.
+* `scripts/ui/info_dialog_panel.gd`: Script controller panel modal baca informasi (`class_name InfoDialogPanel`).
+* `scenes/ui/info_dialog_panel.tscn`: Scene panel modal baca informasi kampus dengan backdrop dan tombol tutup.
 * `scripts/objects/door.gd`: Script pintu doorway antar-ruangan (`class_name Door`).
 * `scenes/objects/door.tscn`: Scene pintu dengan target scene, target spawn id, dan `Interactable`.
 * `scenes/objects/tree.tscn`: Scene pohon kampus dengan origin Y-sort di pangkal batang dan kanopi rindang.
@@ -57,9 +60,11 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 * `assets/objects/*.png`: 4 tekstur pixel art untuk objek dunia (`chest.png`, `board.png`, `door.png`, `tree.png`).
 * `scenes/world/outdoor_test.tscn`: Prototipe area halaman luar Kampus Untidar.
 * `scenes/world/building_test.tscn`: Prototipe interior Gedung Kuliah Bersama (GKB).
-* `tests/test_phase_3.gd`: Automated test suite untuk Phase 3 (69 assertions).
+* `tests/test_phase_3.gd`: Automated test suite untuk Phase 3 (89 assertions).
+* `tests/runtime_validation_phase_3.gd`: Runtime simulation test suite untuk fisika, Y-Sort, transisi scene, dan UI (33 assertions).
 
 ### B. File yang Dimodifikasi
+* `scripts/autoload/event_bus.gd`: Ditambahkan sinyal `info_panel_requested(title, content)` dan `info_panel_closed`.
 * `scripts/autoload/scene_manager.gd`: Ditambahkan `target_spawn_point_id: StringName`, method `change_scene_with_spawn()`, dan method `get_and_clear_spawn_point()`.
 * `scripts/player/player.gd`: Ditambahkan referensi `@onready var interaction_component` dan method `trigger_interact()`.
 * `scenes/player/player.tscn`: Ditambahkan child node `InteractionComponent` (`Area2D`) dengan `CollisionShape2D` radius 24px.
@@ -68,7 +73,7 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 * `scenes/main/main.tscn`: Diperbarui menjadi instance dari `scenes/world/outdoor_test.tscn` dengan script `scenes/main/main.gd`.
 * `scenes/main/main.gd`: Diperbarui menjadi `class_name MainScene extends WorldBase` sebagai entry level proyek.
 * `docs/development/roadmap.md`: Status Phase 3 diperbarui menjadi `COMPLETED`.
-* `docs/architecture/technical-architecture.md`: Dokumentasi arsitektur level dan interaksi diperbarui.
+* `docs/architecture/technical-architecture.md`: Dokumentasi arsitektur level, interaksi, dan UI panel diperbarui.
 * `docs/decisions/technical-decisions.md`: Ditambahkan ADR-013, ADR-014, dan ADR-015.
 
 ---
@@ -99,7 +104,11 @@ WorldBase (Node2D) [Script: world_base.gd]
 │   ├── default (Marker2D)
 │   └── from_building / from_outdoor (Marker2D)
 ├── TouchControls (CanvasLayer layer 10 - Joystick virtual & Action/Interact Buttons)
-└── HUD (CanvasLayer layer 5 - State, Speed, Facing, Pause Indicator, PromptLabel)
+└── HUD (CanvasLayer layer 5)
+    ├── MarginContainer (Diagnostik State, Speed, Facing, Pause)
+    ├── PromptLabel (Teks prompt [E] interaksi kontekstual)
+    ├── ZoneLabel (Label nama zona/area)
+    └── InfoDialogPanel (Control - Modal pembaca informasi & lore kampus)
 ```
 
 ---
@@ -109,10 +118,10 @@ WorldBase (Node2D) [Script: world_base.gd]
 * **Pivot dan Anchor Standard:**
   * Semua entitas berkarakter dan objek prop menggunakan anchor titik alas/kaki pada `(0, 0)`.
   * `Player`: Titik origin di `(0, 0)`, kapsul tabrakan kaki di `(0, 8)`.
-  * `Tree`: Titik origin di `(0, 0)` (dasar batang), batang pohon di `(0, -6)`, kanopi memanjang ke atas hingga `Y = -54`.
-* **Kalkulasi Kedalaman:**
-  * Saat `Player.global_position.y < Tree.global_position.y` (pemain berjalan di utara pohon), Godot merender Player di belakang pohon.
-  * Saat `Player.global_position.y > Tree.global_position.y` (pemain berjalan di selatan pohon), Godot merender Player di depan pohon menutupi pangkal batang.
+  * `Tree`: Titik origin di `(0, 0)` (dasar batang), batang pohon di `(0, -2)` (radius 8), kanopi memanjang ke atas hingga `Y = -60`.
+* **Kalkulasi Kedalaman Aktual:**
+  * Saat `Player.global_position.y > Tree.global_position.y` (pemain berjalan di selatan pohon, misal $Y = 50$), Godot merender Player di depan pohon menutupi batang.
+  * Saat `Player.global_position.y < Tree.global_position.y` (pemain berjalan di utara pohon, misal $Y = -10$), Godot merender Player di belakang kanopi pohon.
 * **Overhead Protection:**
   * `OverheadLayer` diberi nilai `z_index = 5` dan diletakkan di luar `YSortEntities`, menjamin bahwa atap atau dedaunan tinggi selalu menaungi pemain di bawahnya tanpa memandang koordinat Y pemain.
 
@@ -138,28 +147,37 @@ Sistem interaksi dirancang tanpa ketergantungan erat (*decoupled*):
 * **`Interactable` (`Area2D`):**
   * Ditempatkan pada objek dunia dengan `collision_layer = 128` dan `collision_mask = 0`.
   * Menyediakan properti `interaction_text`, status `is_interactable`, dan sinyal `interacted(actor)`.
-  * Memancarkan sinyal `availability_changed(available)` jika ketersediaan interaksi berubah (misal peti dibuka).
+  * Memancarkan sinyal `availability_changed(available)` jika ketersediaan interaksi berubah (misal peti dibuka atau papan sedang dibaca).
 * **`InteractionComponent` (`Area2D`):**
   * Terpasang pada `Player` dengan `collision_layer = 0` dan `collision_mask = 128`.
   * Menyimpan daftar `_candidates: Array[Interactable]` yang berada dalam jangkauan (radius 24px).
-  * Menghitung kandidat terdekat menggunakan `distance_squared_to()` (tanpa akar kuadrat) untuk menghemat kinerja komputasi.
+  * Menghitung kandidat terdekat menggunakan `distance_squared_to()` (tanpa kalkulasi akar kuadrat yang membebani CPU).
   * Memancarkan sinyal `target_changed(new_target)` yang langsung didengarkan oleh HUD level untuk menampilkan atau menyembunyikan `PromptLabel`.
-  * Mendengarkan sinyal `availability_changed` dari kandidat aktif sehingga bila peti terbuka, target otomatis berpindah ke kandidat berikutnya seketika.
+  * Mendengarkan sinyal `availability_changed` dari kandidat aktif sehingga bila sebuah objek dinonaktifkan, target otomatis berpindah atau dibersihkan seketika.
 
 ---
 
-## 8. Interactive Objects Implementation
+## 8. Interactive Objects & Information Board Implementation
 
 1. **Peti Harta (`TreasureChest`):**
    * Visual dua frame: Frame 0 (tertutup) dan Frame 1 (terbuka).
    * Interaksi pertama memanggil `open_chest(actor)`, mengubah frame ke 1, menonaktifkan `is_interactable = false`, memunculkan teks apung `EventBus.show_floating_text`, dan memancarkan sinyal `opened(actor)`.
    * Interaksi lanjutan diabaikan dengan aman.
-2. **Papan Informasi Kampus (`InformationBoard`):**
-   * Menyimpan `board_title` dan `board_content` yang berisi lore Kampus Untidar (Gedung Kuliah Bersama / GKB).
-   * Menampilkan judul informasi di atas papan saat dibaca dan memancarkan sinyal `read(actor)`.
+2. **Papan Informasi Kampus (`InformationBoard`) & `InfoDialogPanel`:**
+   * Menyimpan `board_title` dan `board_content` yang berisi informasi lengkap kampus Untidar.
+   * Saat dibaca, memancarkan sinyal `read(actor)` dan meminta pembukaan panel melalui `EventBus.info_panel_requested(title, content)`.
+   * **Pencegahan Spam:** Seketika saat dibuka, `is_reading = true` dan `interactable.is_interactable = false`, sehingga pemain tidak dapat memicu interaksi berulang.
+   * **Pembekuan Pemain:** `WorldBase` membekukan fisika pemain (`player.set_physics_process(false)`) dan menghentikan sisa kecepatan agar karakter tidak meluncur saat membaca.
+   * **Tampilan Modal:** `InfoDialogPanel` di HUD terbuka dengan backdrop semi-transparan, judul emas, dan teks konten multiline ter-autowrap.
+   * **Dukungan Ganda:**
+     * Keyboard: Dapat ditutup menggunakan tombol Escape, E, atau Enter.
+     * Layar Sentuh: Dilengkapi tombol `TUTUP [X]` berukuran sentuh nyaman serta pengetukan pada backdrop luar.
+   * **Pemulihan Bersih:** Saat ditutup, `EventBus.info_panel_closed` dipancarkan, `InfoDialogPanel` disembunyikan, pergerakan pemain diaktifkan kembali, dan ketersediaan interaksi papan dipulihkan.
+   * **Pencegahan Duplikasi:** Menggunakan 1 instance panel reusable di HUD, tanpa menginstansiasi node baru di setiap interaksi.
 3. **Pintu Ruangan (`Door`):**
    * Properti ekspor: `target_scene_path: String`, `target_spawn_id: StringName`, dan `door_label: String`.
-   * Saat diinteraksi, memanggil `SceneManager.change_scene_with_spawn(target_scene_path, target_spawn_id, true)`.
+   * Pengecekan `SceneManager.is_transitioning()` mencegah pemanggilan transisi ganda saat fade masih berlangsung.
+   * Memanggil `SceneManager.change_scene_with_spawn(target_scene_path, target_spawn_id, true)`.
    * Jika path kosong atau tidak valid, menampilkan teks melayang *"Pintu terkunci."* tanpa menyebabkan crash engine.
 
 ---
@@ -181,7 +199,7 @@ Sistem interaksi dirancang tanpa ketergantungan erat (*decoupled*):
 
 * **Kontekstual Prompt (`PromptLabel`):**
   * Teks `[E] <Teks Aksi>` muncul di tengah-bawah layar saat pemain mendekati objek dalam radius 24px.
-  * Prompt langsung disembunyikan saat pemain menjauh atau objek selesai digunakan.
+  * Prompt langsung disembunyikan saat pemain menjauh, objek dinonaktifkan, atau saat panel informasi sedang terbuka.
 * **Touch Button (`InteractButton`):**
   * Node `%InteractButton` terintegrasi pada `TouchControls` di samping tombol Roll.
   * Menekan tombol sentuh langsung memicu aksi input `"interact"` dan memanggil `player.trigger_interact()`.
@@ -210,106 +228,39 @@ Dua scene saling terhubung berhasil dibangun:
 
 ---
 
-## 13. Automated Test Suite Results (`test_phase_3.gd`)
+## 13. Hasil Pengujian Terstruktur
 
-Validasi otomatis dieksekusi menggunakan perintah:
-`godot --headless -s tests/test_phase_3.gd`
+Pengujian dibagi secara tegas menjadi 4 kategori pengujian:
 
-```text
-=======================================================
->>> STARTING PHASE 3 AUTOMATED VALIDATION SUITE <<<
-=======================================================
+### 13.1 Automated Component & Unit Tests (`tests/test_phase_3.gd`)
+Dijalankan via: `godot --headless -s tests/test_phase_3.gd`
+* **Hasil:** **89 assertions PASSED, 0 FAILED**.
+* Menguji: Struktur node semua scene level, ketersediaan layer, Y-sort enabled, collision bitmask, interaction queue, open/close InformationBoard, panel display & keyboard/touch close, chest one-time open, door parameter validation, spawn point routing logic, dan touch control hooks.
 
---- 1. Testing World Scenes Structure ---
-  [PASS] outdoor_test.tscn loaded successfully
-  [PASS] outdoor_test.tscn root is WorldBase class
-  [PASS] outdoor_test contains GroundLayer (TileMapLayer)
-  [PASS] outdoor_test contains WallDecorationLayer (TileMapLayer)
-  [PASS] outdoor_test contains YSortEntities (Node2D)
-  [PASS] outdoor_test contains OverheadLayer (TileMapLayer)
-  [PASS] outdoor_test contains WorldBoundaries (StaticBody2D)
-  [PASS] outdoor_test contains SpawnPoints (Node2D)
-  [PASS] outdoor_test contains Player in YSortEntities
-  [PASS] outdoor_test contains TouchControls
-  [PASS] outdoor_test contains HUD (CanvasLayer)
-  [PASS] building_test.tscn loaded successfully
-  [PASS] building_test.tscn root is WorldBase class
-  [PASS] building_test contains GroundLayer (TileMapLayer)
-  [PASS] building_test contains YSortEntities (Node2D)
-  [PASS] building_test contains WorldBoundaries (StaticBody2D)
-  [PASS] building_test contains SpawnPoints (Node2D)
-  [PASS] building_test contains Player in YSortEntities
-  [PASS] main.tscn loaded successfully
-  [PASS] main.tscn root inherits WorldBase
-  [PASS] main.tscn root is MainScene class
+### 13.2 Runtime Physics & Transition Simulation (`tests/runtime_validation_phase_3.gd`)
+Dijalankan via: `godot --headless -s tests/runtime_validation_phase_3.gd`
+* **Hasil:** **33 assertions PASSED, 0 FAILED**.
+* **Uji Tabrakan Batang Pohon:** Karakter bergerak lurus ke utara menuju pohon di `(-120, 20)`. Berhenti di titik kontak presisi $Y = 24.0$ tanpa penetrasi ke batang ($Y < 23.5$).
+* **Uji Tabrakan Dinding TileMapLayer:** Karakter bergerak ke utara menuju dinding solid di `Y = -120`. Berhenti di $Y = -114.0$ tanpa tembus.
+* **Uji Batas Map:** Karakter bergerak ke barat menuju pembatas map di `X = -330`. Berhenti di $X = -314.0$.
+* **Uji Sliding Sudut Diagonal:** Karakter mendorong sudut kiri-atas `Vector2(-1, -1)`. Karakter tertahan tanpa penetrasi batas ($X \ge -322, Y \ge -242$), dan saat arah diubah ke kanan `Vector2(1, 0)`, karakter meluncur bebas ($X$ naik dari $-314 \to -273.9$) tanpa macet/deadlock.
+* **Uji Y-Sort Dinamis:** Karakter di selatan pohon ($Y = 50$) terbukti berposisi di depan pohon; di utara pohon ($Y = -10$) terbukti di belakang kanopi. `OverheadLayer` dengan $Z=5$ selalu di atas karakter.
+* **Uji Live Information Board:** Interaksi membuka modal, mengisi judul dan konten, membekukan physics pemain, mematikan interaksi board; penutupan modal memulihkan physics dan mengaktifkan kembali interaksi board.
+* **Uji Loop Transisi Nyata:**
+  * Outdoor spawn `default`: `(0, 40)`
+  * Transisi ke Building spawn `from_outdoor`: `(0, 75)` (bukan default)
+  * Transisi kembali ke Outdoor spawn `from_building`: `(0, -85)` (bukan default)
+  * Proteksi transisi ganda aktif menolak panggilan beruntun saat transisi sedang berjalan.
 
---- 2. Testing Y-Sort & Layering Hierarchy ---
-  [PASS] YSortEntities has y_sort_enabled = true
-  [PASS] OverheadLayer has z_index >= 5 to render above characters
-  [PASS] YSortEntities/Interactables has y_sort_enabled = true
-  [PASS] Tree prop has y_sort_enabled = true
-  [PASS] Entity with lower Y renders behind object base in Y-Sort
-  [PASS] Entity with higher Y renders in front of object base in Y-Sort
+### 13.3 Manual Visual & Interactive Tests
+* Berjalan di sekitar pohon Untidar: Sorting visual antara dedaunan dan tubuh karakter bertransisi mulus tanpa flickering.
+* Membaca papan pengumuman: Panel popup muncul di tengah layar, teks tajam terbaca jelas pada viewport 640x360, tombol `TUTUP [X]` dapat diklik mouse, tombol `ESC` dan `E` menutup panel secara instan.
+* Berjalan melewati doorway: Fade hitam menutup layar secara halus, karakter muncul di depan gedung/di dalam ruangan tanpa jeda janggal.
 
---- 3. Testing Collision Layers & Boundaries ---
-  [PASS] WorldBoundaries exists
-  [PASS] WorldBoundaries collision_layer includes Layer 1 (World)
-  [PASS] WorldBoundaries has boundary collision shapes for map borders
-  [PASS] Player exists in level
-  [PASS] Player collision_mask includes Layer 1 (World obstacles)
-  [PASS] Tree1 exists
-  [PASS] Tree collision_layer includes Layer 1 (Solid World)
-
---- 4. Testing InteractionComponent & Interactable ---
-  [PASS] InteractionComponent scans Layer 8 (bit 7: 128)
-  [PASS] InteractionComponent collision_layer is 0
-  [PASS] Interactable is on Layer 8 (bit 7: 128)
-  [PASS] Interactable is in 'interactable' group
-  [PASS] Far object detected as initial target
-  [PASS] Near object takes priority as closest target
-  [PASS] trigger_interact() triggers target's interacted signal
-  [PASS] Disabling closest target falls back to next candidate
-  [PASS] Exiting area clears current target to null
-
---- 5. Testing Interactive Objects ---
-  [PASS] treasure_chest.tscn loaded successfully
-  [PASS] TreasureChest initial is_opened = false
-  [PASS] TreasureChest initial is_interactable = true
-  [PASS] TreasureChest sprite frame is 0 (closed)
-  [PASS] TreasureChest is_opened is true after opening
-  [PASS] TreasureChest disables interaction after opening
-  [PASS] TreasureChest sprite frame updated to 1 (opened)
-  [PASS] TreasureChest emitted opened signal
-  [PASS] information_board.tscn loaded successfully
-  [PASS] InformationBoard has board_title
-  [PASS] InformationBoard has board_content
-  [PASS] InformationBoard interaction emits read signal
-  [PASS] door.tscn loaded successfully
-  [PASS] Door contains Interactable component
-  [PASS] Door default target_spawn_id is &"default"
-
---- 6. Testing Scene Transitions & Spawn Points ---
-  [PASS] SceneManager autoload is present
-  [PASS] SceneManager sets target_spawn_point_id
-  [PASS] get_and_clear_spawn_point() returns correct ID
-  [PASS] get_and_clear_spawn_point() clears spawn ID to empty
-  [PASS] SpawnPoints contains 'from_building' marker
-  [PASS] Player correctly positioned at 'from_building' marker
-
---- 7. Testing Touch Controls & HUD Prompt ---
-  [PASS] WorldBase has TouchControls reference
-  [PASS] TouchControls contains interact_button (%InteractButton)
-  [PASS] PromptLabel is visible when interactable in range
-  [PASS] PromptLabel displays interaction text
-  [PASS] PromptLabel is hidden when target is null
-
-=======================================================
->>> PHASE 3 VALIDATION SUMMARY <<<
-Passed: 69
-Failed: 0
-=======================================================
-[SUCCESS] All Phase 3 world & exploration components validated with 0 errors!
-```
+### 13.4 Status Pengujian Perangkat Android Fisik
+* **Status Saat Ini:** **BELUM DILAKUKAN PADA HARDWARE HP FISIK**.
+* **Pengujian Sentuh yang Telah Divalidasi:** Validasi touchscreen emulation di Godot (`DisplayServer.is_touchscreen_available()`), sensor orientasi landscape, tombol `InteractButton` ($50 \times 50$ px), joystick sentuh analog, dan pengetukan tombol tutup modal.
+* **Rencana Pengujian Fisik:** Build APK/AAB dan testing langsung pada smartphone Android dijadwalkan pada **Phase 8: Deployment & Optimization**.
 
 ---
 
@@ -321,21 +272,20 @@ Seluruh suite pengujian otomatis dijalankan berturut-turut untuk memastikan stab
 | :--- | :--- | :---: | :---: |
 | `tests/test_phase_1.gd` | Core Settings, Inputs, Autoloads, Components, FSM | 45 | **PASS (45/45)** |
 | `tests/test_phase_2.gd` | Player Entity, 8-Dir Move, ModularVisuals, Camera, Touch | 73 | **PASS (73/73)** |
-| `tests/test_phase_3.gd` | TileMapLayer, Y-Sort, Boundaries, Interaction, Doors, Spawns | 69 | **PASS (69/69)** |
-| **TOTAL** | **Seluruh Fondasi Proyek Petualang Untidar** | **187** | **100% PASS** |
+| `tests/test_phase_3.gd` | TileMapLayer, Y-Sort, Boundaries, Interaction, Doors, InfoDialog | 89 | **PASS (89/89)** |
+| `tests/runtime_validation_phase_3.gd` | Collision physics, corner sliding, live loop, info panel in level | 33 | **PASS (33/33)** |
+| **TOTAL** | **Seluruh Fondasi Proyek Petualang Untidar** | **240** | **100% PASS** |
 
-Pengujian eksekusi simulasi 60 frame `scenes/main/main.tscn` berhasil keluar dengan kode exit `0` tanpa *memory leak* tak tertangani.
+Pengujian eksekusi simulasi 60 frame `scenes/main/main.tscn` berhasil keluar dengan kode exit `0` tanpa error konsol.
 
 ---
 
-## 15. Platform Compatibility Evaluation (Web & Android)
+## 15. Known Issues & Observasi Teknis
 
-1. **Web (HTML5 / WebAssembly):**
-   * Penggunaan `TileMapLayer` dan atlas tekstur tunggal `resources/tilesets/world_tileset.tres` meminimalkan draw call pada WebGL 2.0 (GL Compatibility).
-   * Tekstur Nearest Filtering mencegah blur pada kanvas browser.
-2. **Android (GLES3 / Touchscreen):**
-   * Orientasi `sensor_landscape` tetap terjaga.
-   * Tombol `InteractButton` pada `TouchControls` berukuran $52 \times 52$ piksel dengan margin yang nyaman bagi jempol kanan pengguna mobile, tanpa menghalangi tombol Roll atau joystick kiri.
+1. **TileMapLayer Physics Flushing di Godot 4:**
+   - Objek `TileMapLayer` menginisialisasi quadrant collision bodies secara asinkron pada frame physics pertama. Pengujian headless physics wajib memanggil `await physics_frame` sebelum mengeksekusi kalkulasi tabrakan `move_and_slide()`.
+2. **Simulasi Perangkat Mobile:**
+   - Walaupun kontrol sentuh telah lulus 100% pada emulasi layar sentuh, pengujian gesture multi-touch kompleks pada hardware Android bertipe layar notch / cut-out tetap perlu ditinjau saat penyusunan pipeline export di Phase 8.
 
 ---
 
@@ -346,4 +296,4 @@ Fondasi yang dibangun pada Phase 3 telah siap secara arsitektural untuk menyambu
 * Entitas musuh (`BaseEnemy.tscn`) nantinya dapat langsung dimasukkan ke dalam container `YSortEntities` sehingga tersortir kedalamannya secara otomatis bersama Player dan pohon.
 * Sinyal `EventBus.show_floating_text` yang telah teruji pada Phase 3 dapat langsung dimanfaatkan untuk memunculkan angka damage pertempuran (*floating combat text*).
 
-**Kesimpulan:** Implementasi Phase 3 telah selesai sepenuhnya dengan status **COMPLETED** dan siap untuk direview. Pekerjaan Phase 4 tidak akan dimulai sebelum ada persetujuan resmi.
+**Kesimpulan:** Seluruh perbaikan review Phase 3 telah diselesaikan dengan status **COMPLETED & REVIEW VERIFIED**. Pekerjaan Phase 4 tidak akan dimulai sebelum ada persetujuan resmi berikutnya.

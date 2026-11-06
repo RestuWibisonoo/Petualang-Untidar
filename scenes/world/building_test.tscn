@@ -1,0 +1,188 @@
+[gd_scene format=4]
+
+[ext_resource type="TileSet" path="res://resources/tilesets/world_tileset.tres" id="1_f2oe3"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_pdrgj"]
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="3_nb0c3"]
+[ext_resource type="PackedScene" path="res://scenes/objects/information_board.tscn" id="4_5rqh8"]
+[ext_resource type="PackedScene" path="res://scenes/objects/door.tscn" id="5_by7d7"]
+[ext_resource type="PackedScene" path="res://scenes/ui/touch_controls.tscn" id="6_vmb2q"]
+[ext_resource type="Script" path="res://scripts/ui/touch/touch_controls.gd" id="7_efq34"]
+[ext_resource type="Script" uid="uid://ddkmx1f6a11yx" path="res://scripts/world/world_base.gd" id="8_world_base"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hnmuc"]
+size = Vector2(340, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gvtlw"]
+size = Vector2(340, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_41nk1"]
+size = Vector2(20, 290)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_febnk"]
+size = Vector2(20, 290)
+
+[node name="BuildingTest" type="Node2D" unique_id=426519135]
+script = ExtResource("8_world_base")
+level_name = "Gedung Kuliah Bersama (GKB)"
+
+[node name="GroundLayer" type="TileMapLayer" parent="." unique_id=55604514]
+tile_map_data = PackedByteArray("AAD2//j/AAAAAAEAAAD3//j/AAAAAAEAAAD4//j/AAAAAAEAAAD5//j/AAAAAAEAAAD6//j/AAAAAAEAAAD7//j/AAAAAAEAAAD8//j/AAAAAAEAAAD9//j/AAAAAAEAAAD+//j/AAAAAAEAAAD///j/AAAAAAEAAAAAAPj/AAAAAAEAAAABAPj/AAAAAAEAAAACAPj/AAAAAAEAAAADAPj/AAAAAAEAAAAEAPj/AAAAAAEAAAAFAPj/AAAAAAEAAAAGAPj/AAAAAAEAAAAHAPj/AAAAAAEAAAAIAPj/AAAAAAEAAAAJAPj/AAAAAAEAAAAKAPj/AAAAAAEAAAD2//n/AAAAAAEAAAD3//n/AAAAAAEAAAD4//n/AAAAAAEAAAD5//n/AAAAAAEAAAD6//n/AAAAAAEAAAD7//n/AAAAAAEAAAD8//n/AAAAAAEAAAD9//n/AAAAAAEAAAD+//n/AAAAAAEAAAD///n/AAAAAAEAAAAAAPn/AAAAAAEAAAABAPn/AAAAAAEAAAACAPn/AAAAAAEAAAADAPn/AAAAAAEAAAAEAPn/AAAAAAEAAAAFAPn/AAAAAAEAAAAGAPn/AAAAAAEAAAAHAPn/AAAAAAEAAAAIAPn/AAAAAAEAAAAJAPn/AAAAAAEAAAAKAPn/AAAAAAEAAAD2//r/AAAAAAEAAAD3//r/AAAAAAEAAAD4//r/AAAAAAEAAAD5//r/AAAAAAEAAAD6//r/AAAAAAEAAAD7//r/AAAAAAEAAAD8//r/AAAAAAEAAAD9//r/AAAAAAEAAAD+//r/AAAAAAEAAAD///r/AAAAAAEAAAAAAPr/AAAAAAEAAAABAPr/AAAAAAEAAAACAPr/AAAAAAEAAAADAPr/AAAAAAEAAAAEAPr/AAAAAAEAAAAFAPr/AAAAAAEAAAAGAPr/AAAAAAEAAAAHAPr/AAAAAAEAAAAIAPr/AAAAAAEAAAAJAPr/AAAAAAEAAAAKAPr/AAAAAAEAAAD2//v/AAAAAAEAAAD3//v/AAAAAAEAAAD4//v/AAAAAAEAAAD5//v/AAAAAAEAAAD6//v/AAAAAAEAAAD7//v/AAAAAAEAAAD8//v/AAAAAAEAAAD9//v/AAAAAAEAAAD+//v/AAAAAAEAAAD///v/AAAAAAEAAAAAAPv/AAAAAAEAAAABAPv/AAAAAAEAAAACAPv/AAAAAAEAAAADAPv/AAAAAAEAAAAEAPv/AAAAAAEAAAAFAPv/AAAAAAEAAAAGAPv/AAAAAAEAAAAHAPv/AAAAAAEAAAAIAPv/AAAAAAEAAAAJAPv/AAAAAAEAAAAKAPv/AAAAAAEAAAD2//z/AAAAAAEAAAD3//z/AAAAAAEAAAD4//z/AAAAAAEAAAD5//z/AAAAAAEAAAD6//z/AAAAAAEAAAD7//z/AAAAAAEAAAD8//z/AAAAAAEAAAD9//z/AAAAAAEAAAD+//z/AAAAAAEAAAD///z/AAAAAAEAAAAAAPz/AAAAAAEAAAABAPz/AAAAAAEAAAACAPz/AAAAAAEAAAADAPz/AAAAAAEAAAAEAPz/AAAAAAEAAAAFAPz/AAAAAAEAAAAGAPz/AAAAAAEAAAAHAPz/AAAAAAEAAAAIAPz/AAAAAAEAAAAJAPz/AAAAAAEAAAAKAPz/AAAAAAEAAAD2//3/AAAAAAEAAAD3//3/AAAAAAEAAAD4//3/AAAAAAEAAAD5//3/AAAAAAEAAAD6//3/AAAAAAEAAAD7//3/AAAAAAEAAAD8//3/AAAAAAEAAAD9//3/AAAAAAEAAAD+//3/AAAAAAEAAAD///3/AAAAAAEAAAAAAP3/AAAAAAEAAAABAP3/AAAAAAEAAAACAP3/AAAAAAEAAAADAP3/AAAAAAEAAAAEAP3/AAAAAAEAAAAFAP3/AAAAAAEAAAAGAP3/AAAAAAEAAAAHAP3/AAAAAAEAAAAIAP3/AAAAAAEAAAAJAP3/AAAAAAEAAAAKAP3/AAAAAAEAAAD2//7/AAAAAAEAAAD3//7/AAAAAAEAAAD4//7/AAAAAAEAAAD5//7/AAAAAAEAAAD6//7/AAAAAAEAAAD7//7/AAAAAAEAAAD8//7/AAAAAAEAAAD9//7/AAAAAAEAAAD+//7/AAAAAAEAAAD///7/AAAAAAEAAAAAAP7/AAAAAAEAAAABAP7/AAAAAAEAAAACAP7/AAAAAAEAAAADAP7/AAAAAAEAAAAEAP7/AAAAAAEAAAAFAP7/AAAAAAEAAAAGAP7/AAAAAAEAAAAHAP7/AAAAAAEAAAAIAP7/AAAAAAEAAAAJAP7/AAAAAAEAAAAKAP7/AAAAAAEAAAD2////AAAAAAEAAAD3////AAAAAAEAAAD4////AAAAAAEAAAD5////AAAAAAEAAAD6////AAAAAAEAAAD7////AAAAAAEAAAD8////AAAAAAEAAAD9////AAAAAAEAAAD+////AAAAAAEAAAD/////AAAAAAEAAAAAAP//AAAAAAEAAAABAP//AAAAAAEAAAACAP//AAAAAAEAAAADAP//AAAAAAEAAAAEAP//AAAAAAEAAAAFAP//AAAAAAEAAAAGAP//AAAAAAEAAAAHAP//AAAAAAEAAAAIAP//AAAAAAEAAAAJAP//AAAAAAEAAAAKAP//AAAAAAEAAAD2/wAAAAAAAAEAAAD3/wAAAAAAAAEAAAD4/wAAAAAAAAEAAAD5/wAAAAAAAAEAAAD6/wAAAAAAAAEAAAD7/wAAAAAAAAEAAAD8/wAAAAAAAAEAAAD9/wAAAAAAAAEAAAD+/wAAAAAAAAEAAAD//wAAAAAAAAEAAAAAAAAAAAAAAAEAAAABAAAAAAAAAAEAAAACAAAAAAAAAAEAAAADAAAAAAAAAAEAAAAEAAAAAAAAAAEAAAAFAAAAAAAAAAEAAAAGAAAAAAAAAAEAAAAHAAAAAAAAAAEAAAAIAAAAAAAAAAEAAAAJAAAAAAAAAAEAAAAKAAAAAAAAAAEAAAD2/wEAAAAAAAEAAAD3/wEAAAAAAAEAAAD4/wEAAAAAAAEAAAD5/wEAAAAAAAEAAAD6/wEAAAAAAAEAAAD7/wEAAAAAAAEAAAD8/wEAAAAAAAEAAAD9/wEAAAAAAAEAAAD+/wEAAAAAAAEAAAD//wEAAAAAAAEAAAAAAAEAAAAAAAEAAAABAAEAAAAAAAEAAAACAAEAAAAAAAEAAAADAAEAAAAAAAEAAAAEAAEAAAAAAAEAAAAFAAEAAAAAAAEAAAAGAAEAAAAAAAEAAAAHAAEAAAAAAAEAAAAIAAEAAAAAAAEAAAAJAAEAAAAAAAEAAAAKAAEAAAAAAAEAAAD2/wIAAAAAAAEAAAD3/wIAAAAAAAEAAAD4/wIAAAAAAAEAAAD5/wIAAAAAAAEAAAD6/wIAAAAAAAEAAAD7/wIAAAAAAAEAAAD8/wIAAAAAAAEAAAD9/wIAAAAAAAEAAAD+/wIAAAAAAAEAAAD//wIAAAAAAAEAAAAAAAIAAAAAAAEAAAABAAIAAAAAAAEAAAACAAIAAAAAAAEAAAADAAIAAAAAAAEAAAAEAAIAAAAAAAEAAAAFAAIAAAAAAAEAAAAGAAIAAAAAAAEAAAAHAAIAAAAAAAEAAAAIAAIAAAAAAAEAAAAJAAIAAAAAAAEAAAAKAAIAAAAAAAEAAAD2/wMAAAAAAAEAAAD3/wMAAAAAAAEAAAD4/wMAAAAAAAEAAAD5/wMAAAAAAAEAAAD6/wMAAAAAAAEAAAD7/wMAAAAAAAEAAAD8/wMAAAAAAAEAAAD9/wMAAAAAAAEAAAD+/wMAAAAAAAEAAAD//wMAAAAAAAEAAAAAAAMAAAAAAAEAAAABAAMAAAAAAAEAAAACAAMAAAAAAAEAAAADAAMAAAAAAAEAAAAEAAMAAAAAAAEAAAAFAAMAAAAAAAEAAAAGAAMAAAAAAAEAAAAHAAMAAAAAAAEAAAAIAAMAAAAAAAEAAAAJAAMAAAAAAAEAAAAKAAMAAAAAAAEAAAD2/wQAAAAAAAEAAAD3/wQAAAAAAAEAAAD4/wQAAAAAAAEAAAD5/wQAAAAAAAEAAAD6/wQAAAAAAAEAAAD7/wQAAAAAAAEAAAD8/wQAAAAAAAEAAAD9/wQAAAAAAAEAAAD+/wQAAAAAAAEAAAD//wQAAAAAAAEAAAAAAAQAAAAAAAEAAAABAAQAAAAAAAEAAAACAAQAAAAAAAEAAAADAAQAAAAAAAEAAAAEAAQAAAAAAAEAAAAFAAQAAAAAAAEAAAAGAAQAAAAAAAEAAAAHAAQAAAAAAAEAAAAIAAQAAAAAAAEAAAAJAAQAAAAAAAEAAAAKAAQAAAAAAAEAAAD2/wUAAAAAAAEAAAD3/wUAAAAAAAEAAAD4/wUAAAAAAAEAAAD5/wUAAAAAAAEAAAD6/wUAAAAAAAEAAAD7/wUAAAAAAAEAAAD8/wUAAAAAAAEAAAD9/wUAAAAAAAEAAAD+/wUAAAAAAAEAAAD//wUAAAAAAAEAAAAAAAUAAAAAAAEAAAABAAUAAAAAAAEAAAACAAUAAAAAAAEAAAADAAUAAAAAAAEAAAAEAAUAAAAAAAEAAAAFAAUAAAAAAAEAAAAGAAUAAAAAAAEAAAAHAAUAAAAAAAEAAAAIAAUAAAAAAAEAAAAJAAUAAAAAAAEAAAAKAAUAAAAAAAEAAAD2/wYAAAAAAAEAAAD3/wYAAAAAAAEAAAD4/wYAAAAAAAEAAAD5/wYAAAAAAAEAAAD6/wYAAAAAAAEAAAD7/wYAAAAAAAEAAAD8/wYAAAAAAAEAAAD9/wYAAAAAAAEAAAD+/wYAAAAAAAEAAAD//wYAAAAAAAEAAAAAAAYAAAAAAAEAAAABAAYAAAAAAAEAAAACAAYAAAAAAAEAAAADAAYAAAAAAAEAAAAEAAYAAAAAAAEAAAAFAAYAAAAAAAEAAAAGAAYAAAAAAAEAAAAHAAYAAAAAAAEAAAAIAAYAAAAAAAEAAAAJAAYAAAAAAAEAAAAKAAYAAAAAAAEAAAD2/wcAAAAAAAEAAAD3/wcAAAAAAAEAAAD4/wcAAAAAAAEAAAD5/wcAAAAAAAEAAAD6/wcAAAAAAAEAAAD7/wcAAAAAAAEAAAD8/wcAAAAAAAEAAAD9/wcAAAAAAAEAAAD+/wcAAAAAAAEAAAD//wcAAAAAAAEAAAAAAAcAAAAAAAEAAAABAAcAAAAAAAEAAAACAAcAAAAAAAEAAAADAAcAAAAAAAEAAAAEAAcAAAAAAAEAAAAFAAcAAAAAAAEAAAAGAAcAAAAAAAEAAAAHAAcAAAAAAAEAAAAIAAcAAAAAAAEAAAAJAAcAAAAAAAEAAAAKAAcAAAAAAAEAAAD2/wgAAAAAAAEAAAD3/wgAAAAAAAEAAAD4/wgAAAAAAAEAAAD5/wgAAAAAAAEAAAD6/wgAAAAAAAEAAAD7/wgAAAAAAAEAAAD8/wgAAAAAAAEAAAD9/wgAAAAAAAEAAAD+/wgAAAAAAAEAAAD//wgAAAAAAAEAAAAAAAgAAAAAAAEAAAABAAgAAAAAAAEAAAACAAgAAAAAAAEAAAADAAgAAAAAAAEAAAAEAAgAAAAAAAEAAAAFAAgAAAAAAAEAAAAGAAgAAAAAAAEAAAAHAAgAAAAAAAEAAAAIAAgAAAAAAAEAAAAJAAgAAAAAAAEAAAAKAAgAAAAAAAEAAAA=")
+tile_set = ExtResource("1_f2oe3")
+
+[node name="WallDecorationLayer" type="TileMapLayer" parent="." unique_id=1761823388]
+tile_set = ExtResource("1_f2oe3")
+
+[node name="YSortEntities" type="Node2D" parent="." unique_id=1405904095]
+y_sort_enabled = true
+
+[node name="SolidObjectsLayer" type="TileMapLayer" parent="YSortEntities" unique_id=1098689457]
+y_sort_enabled = true
+tile_map_data = PackedByteArray("AAD2//j/AAADAAAAAAD3//j/AAADAAAAAAD4//j/AAADAAAAAAD5//j/AAADAAAAAAD6//j/AAADAAAAAAD7//j/AAADAAAAAAD8//j/AAADAAAAAAD9//j/AAADAAAAAAD+//j/AAADAAAAAAD///j/AAADAAAAAAAAAPj/AAADAAAAAAABAPj/AAADAAAAAAACAPj/AAADAAAAAAADAPj/AAADAAAAAAAEAPj/AAADAAAAAAAFAPj/AAADAAAAAAAGAPj/AAADAAAAAAAHAPj/AAADAAAAAAAIAPj/AAADAAAAAAAJAPj/AAADAAAAAAAKAPj/AAADAAAAAAA=")
+tile_set = ExtResource("1_f2oe3")
+
+[node name="Player" type="CharacterBody2D" parent="YSortEntities" unique_id=108551166 instance=ExtResource("2_pdrgj")]
+script = ExtResource("3_nb0c3")
+
+[node name="Interactables" type="Node2D" parent="YSortEntities" unique_id=339399426]
+y_sort_enabled = true
+
+[node name="BuildingInfoBoard" type="StaticBody2D" parent="YSortEntities/Interactables" unique_id=1969881082 instance=ExtResource("4_5rqh8")]
+y_sort_enabled = true
+position = Vector2(60, -30)
+collision_mask = 0
+
+[node name="ExitDoor" type="Node2D" parent="YSortEntities/Interactables" unique_id=208216469 instance=ExtResource("5_by7d7")]
+y_sort_enabled = true
+position = Vector2(0, 110)
+target_scene_path = "res://scenes/world/outdoor_test.tscn"
+target_spawn_id = &"from_building"
+door_label = "Keluar ke Halaman"
+
+[node name="OverheadLayer" type="TileMapLayer" parent="." unique_id=64828997]
+z_index = 5
+tile_set = ExtResource("1_f2oe3")
+
+[node name="WorldBoundaries" type="StaticBody2D" parent="." unique_id=1505226206]
+collision_mask = 0
+
+[node name="@CollisionShape2D@6" type="CollisionShape2D" parent="WorldBoundaries" unique_id=1895671606]
+position = Vector2(0, -135)
+shape = SubResource("RectangleShape2D_hnmuc")
+
+[node name="@CollisionShape2D@7" type="CollisionShape2D" parent="WorldBoundaries" unique_id=1985926475]
+position = Vector2(0, 135)
+shape = SubResource("RectangleShape2D_gvtlw")
+
+[node name="@CollisionShape2D@8" type="CollisionShape2D" parent="WorldBoundaries" unique_id=100146988]
+position = Vector2(-170, 0)
+shape = SubResource("RectangleShape2D_41nk1")
+
+[node name="@CollisionShape2D@9" type="CollisionShape2D" parent="WorldBoundaries" unique_id=1330187467]
+position = Vector2(170, 0)
+shape = SubResource("RectangleShape2D_febnk")
+
+[node name="SpawnPoints" type="Node2D" parent="." unique_id=889449562]
+
+[node name="default" type="Marker2D" parent="SpawnPoints" unique_id=1036969656]
+
+[node name="from_outdoor" type="Marker2D" parent="SpawnPoints" unique_id=1581756557]
+position = Vector2(0, 75)
+
+[node name="TouchControls" type="CanvasLayer" parent="." unique_id=13333428 instance=ExtResource("6_vmb2q")]
+layer = 10
+script = ExtResource("7_efq34")
+
+[node name="HUD" type="CanvasLayer" parent="." ]
+layer = 5
+
+[node name="MarginContainer" type="MarginContainer" parent="HUD"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 60.0
+grow_horizontal = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD/MarginContainer"]
+layout_mode = 2
+
+[node name="VBoxLeft" type="VBoxContainer" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="TitleLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "PETUALANG UNTIDAR - PHASE 3"
+
+[node name="StateLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.309804, 0.764706, 0.968627, 1)
+theme_override_font_sizes/font_size = 10
+text = "Player State: IDLE"
+
+[node name="SpeedLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.505882, 0.780392, 0.517647, 1)
+theme_override_font_sizes/font_size = 10
+text = "Speed: 0.0 px/s"
+
+[node name="FacingLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.717647, 0.301961, 1)
+theme_override_font_sizes/font_size = 10
+text = "Facing: DOWN"
+
+[node name="Spacer" type="Control" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxRight" type="VBoxContainer" parent="HUD/MarginContainer/HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HintLabel" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxRight"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.666667, 0.666667, 0.666667, 1)
+theme_override_font_sizes/font_size = 9
+text = "WASD: Move | Space: Dodge | E: Interact | ESC: Pause"
+horizontal_alignment = 2
+
+[node name="PauseIndicator" type="Label" parent="HUD/MarginContainer/HBoxContainer/VBoxRight"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.596078, 0, 1)
+theme_override_font_sizes/font_size = 10
+text = "[ GAME PAUSED ]"
+horizontal_alignment = 2
+
+[node name="PromptLabel" type="Label" parent="HUD" ]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -60.0
+offset_right = 150.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+horizontal_alignment = 1
+
+[node name="ZoneLabel" type="Label" parent="HUD" ]
+offset_left = 12.0
+offset_top = 58.0
+offset_right = 250.0
+offset_bottom = 74.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+text = "Gedung Kuliah Bersama (GKB)"

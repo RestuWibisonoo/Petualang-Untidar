@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://scripts/player/states/player_roll_state.gd" id="16_5mf0n"]
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="17_4hvnv"]
 [ext_resource type="Script" path="res://scripts/components/velocity_component.gd" id="18_bbmj2"]
+[ext_resource type="Script" path="res://scripts/components/interaction_component.gd" id="19_lgqa7"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_kxw46"]
 radius = 6.0
@@ -1607,3 +1608,8 @@ script = ExtResource("18_bbmj2")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1611154520]
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
+
+[node name="InteractionComponent" type="Area2D" parent="." unique_id=1402628190]
+collision_layer = 0
+collision_mask = 128
+script = ExtResource("19_lgqa7")

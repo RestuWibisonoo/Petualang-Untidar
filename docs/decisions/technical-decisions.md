@@ -187,3 +187,48 @@
   3. Memiliki deadzone dan normalisasi bawaan untuk pergerakan halus ke segala arah.
 * **Konsekuensi:** Komponen UI touch controls harus selalu diinstansiasi pada scene atau viewport yang menampung entitas pemain.
 
+---
+
+### ADR-013: TileMapLayer Pipeline & 2D Y-Sort Depth Architecture
+
+* **Konteks:** Menentukan arsitektur level 2D, pemisahan lapisan visual, dan penyusunan kedalaman (*depth sorting*) antara karakter pemain dan objek lingkungan (pohon, bangunan, peti) di Godot 4.7.
+* **Keputusan:** Menggunakan node modern **`TileMapLayer`** dengan struktur layer 4-tingkat:
+  1. `GroundLayer` (Z-index: 0, tanpa tabrakan).
+  2. `WallDecorationLayer` (Z-index: 0, dekorasi lantai/dinding bawah).
+  3. `YSortEntities` (`Node2D`, `y_sort_enabled = true`):
+     - `SolidObjectsLayer` (`TileMapLayer`, `y_sort_enabled = true`, Collision Layer 1).
+     - `Player` (`CharacterBody2D`, anchor pivot di `(0, 0)`, capsule feet di `(0, 8)`).
+     - `Interactables` (`Node2D`, `y_sort_enabled = true`).
+  4. `OverheadLayer` (`TileMapLayer`, Z-index: 5, atap/kanopi di luar Y-Sort).
+* **Alasan Pemilihan:**
+  1. Node `TileMap` lama telah dideprecated di Godot 4.3+ demi arsitektur node mandiri `TileMapLayer` yang lebih modular dan berperforma tinggi.
+  2. Menempatkan semua entitas dinamis dan rintangan solid di dalam satu induk `YSortEntities` memastikan sorting matematis akurat: karakter di Y < objek tampil di belakang, dan di Y > objek tampil di depan.
+  3. Kanopi pohon dan atap bangunan diberi Z-Index 5 di luar YSortEntities agar selalu menutupi karakter yang berjalan di bawahnya tanpa memicu tearing visual.
+* **Konsekuensi:** Semua scene objek prop (pohon, batu, bangunan) wajib memiliki pivot/origin `(0, 0)` di dasar kaki atau alas tabrakan fisika.
+
+---
+
+### ADR-014: Component-Based Interaction System (Layer 8 Matrix)
+
+* **Konteks:** Pemain perlu mendeteksi dan berinteraksi dengan berbagai objek lingkungan (peti harta, papan pengumuman, pintu transisi) baik melalui tombol keyboard (`E`) maupun tombol sentuh mobile (`InteractButton`).
+* **Keputusan:** Mengimplementasikan pola kontrak komponen Area2D terpisah:
+  - **`Interactable` (`Area2D`):** Ditempatkan pada objek dunia. Dikonfigurasi pada **Collision Layer 8 (Value 128, Mask 0)** dan terdaftar dalam grup `&"interactable"`.
+  - **`InteractionComponent` (`Area2D`):** Menempel pada Player. Dikonfigurasi pada **Collision Layer 0 (Mask Layer 8: 128)**.
+* **Alasan Pemilihan:**
+  1. Memisahkan fisika dunia (Layer 1) dan hitbox combat (Layer 3-7) dari deteksi interaksi (Layer 8) menghilangkan interferensi sinyal tabrakan.
+  2. `InteractionComponent` mengelola kandidat interaksi terdekat (*closest target*) menggunakan perbandingan jarak Euclidean kuadrat (`distance_squared_to`), mencegah kalkulasi akar kuadrat yang membebani CPU.
+  3. Mendukung reaktivitas instan via sinyal `availability_changed` saat sebuah objek terkunci atau sudah dibuka.
+* **Konsekuensi:** Semua objek yang dapat berinteraksi wajib memiliki subnode `Interactable` dengan layer 8 aktif.
+
+---
+
+### ADR-015: Door Transition & Spawn Point Routing via SceneManager
+
+* **Konteks:** Menghubungkan eksplorasi antar-scene (halaman luar kampus dan interior gedung) dengan titik kemunculan (*spawn point*) yang presisi dan transisi visual mulus.
+* **Keputusan:** Memperluas `SceneManager` dengan method **`change_scene_with_spawn(target_path, spawn_id, with_fade, duration)`** dan `WorldBase._handle_spawn_point()`.
+* **Alasan Pemilihan:**
+  1. Menghindari ketergantungan erat (*tight coupling*) antar scene: scene pintu hanya perlu mendeklarasikan `target_scene_path: String` dan `target_spawn_id: StringName`.
+  2. Level controller (`WorldBase`) secara otomatis memposisikan `Player` ke node `Marker2D` yang cocok di dalam penampung `SpawnPoints` saat scene dimuat.
+  3. Layar fade-to-black dari `SceneManager` menyembunyikan frame perpindahan posisi karakter secara elegan.
+* **Konsekuensi:** Setiap scene level yang mendukung transisi wajib memiliki node `SpawnPoints` berisi minimal satu `Marker2D` bernama `default`.
+

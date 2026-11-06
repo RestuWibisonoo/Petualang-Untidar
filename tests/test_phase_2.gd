@@ -232,3 +232,4 @@ func test_touch_controls_system() -> void:
 	assert_true(joystick.get_current_vector() == Vector2.ZERO, "Joystick resets vector to Vector2.ZERO on release")
 
 	touch_controls.queue_free()
+

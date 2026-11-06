@@ -40,3 +40,4 @@ func physics_update(delta: float) -> void:
 
 	if player.modular_visuals:
 		player.modular_visuals.play_animation(&"walk", player.get_facing_direction_name())
+

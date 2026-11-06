@@ -7,6 +7,7 @@ extends Node
 var _is_transitioning: bool = false
 var _overlay_layer: CanvasLayer
 var _fade_rect: ColorRect
+var target_spawn_point_id: StringName = &""
 
 
 func _ready() -> void:
@@ -28,6 +29,17 @@ func _setup_fade_overlay() -> void:
 	_fade_rect.color = Color(0, 0, 0, 0)
 	_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay_layer.add_child(_fade_rect)
+
+
+func change_scene_with_spawn(scene_path: String, spawn_id: StringName = &"", with_fade: bool = true, duration: float = 0.3) -> void:
+	target_spawn_point_id = spawn_id
+	change_scene_to_file(scene_path, with_fade, duration)
+
+
+func get_and_clear_spawn_point() -> StringName:
+	var spawn_id := target_spawn_point_id
+	target_spawn_point_id = &""
+	return spawn_id
 
 
 func change_scene_to_file(scene_path: String, with_fade: bool = true, duration: float = 0.3) -> void:

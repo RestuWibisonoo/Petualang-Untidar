@@ -181,3 +181,4 @@ Dengan karakter yang telah dapat bergerak, berputar 8-arah, melakukan roll, dan 
 2. Pengelompokan Y-Sort untuk sorting kedalaman pemain terhadap pohon dan bangunan kampus Untidar.
 3. Pembuatan `InteractionComponent` dan `InteractableArea2D` (pintu ruangan, peti, papan pengumuman).
 4. Pembuatan `SceneTransitionTrigger` yang terintegrasi dengan `SceneManager`.
+

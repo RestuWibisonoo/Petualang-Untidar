@@ -14,6 +14,7 @@ extends CharacterBody2D
 @onready var state_machine: StateMachine = $StateMachine
 @onready var modular_visuals: ModularVisuals = $ModularVisuals
 @onready var camera: Camera2D = $Camera2D
+@onready var interaction_component: InteractionComponent = get_node_or_null("InteractionComponent") as InteractionComponent
 
 var current_input_direction: Vector2 = Vector2.ZERO
 var last_movement_direction: Vector2 = Vector2.DOWN
@@ -51,3 +52,9 @@ func set_touch_input(touch_dir: Vector2) -> void:
 func trigger_dodge() -> void:
 	if state_machine and (state_machine.get_current_state_name() == &"idle" or state_machine.get_current_state_name() == &"move"):
 		state_machine.transition_to(&"roll")
+
+
+func trigger_interact() -> void:
+	if interaction_component:
+		interaction_component.interact_with_current_target()
+

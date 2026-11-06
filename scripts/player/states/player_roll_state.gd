@@ -51,3 +51,4 @@ func physics_update(delta: float) -> void:
 			state_machine.transition_to(&"move")
 		else:
 			state_machine.transition_to(&"idle")
+

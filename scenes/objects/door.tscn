@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://e28i6k3l5m03"]
+
+[ext_resource type="Script" path="res://scripts/objects/door.gd" id="1_door"]
+[ext_resource type="Texture2D" path="res://assets/objects/door.png" id="2_tex"]
+[ext_resource type="Script" path="res://scripts/components/interactable.gd" id="3_interact"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_trigger"]
+radius = 28.0
+
+[node name="Door" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_door")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -20)
+texture = ExtResource("2_tex")
+
+[node name="Interactable" type="Area2D" parent="."]
+collision_layer = 128
+collision_mask = 0
+script = ExtResource("3_interact")
+interaction_text = "Masuk Gedung"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Interactable"]
+position = Vector2(0, 0)
+shape = SubResource("CircleShape2D_trigger")

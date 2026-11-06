@@ -20,6 +20,7 @@ Seluruh dokumentasi teknis, audit, dan perencanaan proyek tersedia di direktori 
 - **[Character Asset Standard](docs/art/character-asset-standard.md)**: Standar kanvas 32x32, pivot, layout spritesheet 10 layer modular.
 - **[Phase 1 Implementation Report](docs/reports/2026-11-06-phase-1-project-foundation.md)**: Laporan implementasi fondasi engine, input, autoload, dan core components.
 - **[Phase 2 Implementation Report](docs/reports/2026-11-06-phase-2-character-foundation.md)**: Laporan implementasi karakter utama, modular visuals, FSM, dan kontrol sentuh.
+- **[Phase 3 Implementation Report](docs/reports/2026-11-06-phase-3-world-exploration.md)**: Laporan implementasi TileMapLayer, Y-Sort depth sorting, interaksi objek, dan transisi antar-level.
 
 ## Lisensi & Hak Cipta
 Hak Cipta (c) 2026 Tim Pengembang Petualang Untidar.

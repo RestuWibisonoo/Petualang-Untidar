@@ -117,3 +117,4 @@ func sync_frame_to_all_layers(frame_index: int) -> void:
 		var sprite: Sprite2D = get_layer_node(layer_name)
 		if sprite and sprite.texture:
 			sprite.frame = frame_index
+

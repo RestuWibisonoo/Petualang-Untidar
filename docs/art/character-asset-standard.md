@@ -97,3 +97,4 @@ Format nama animasi di `AnimationPlayer`: `<action>_<direction>`
    * `textures/canvas_textures/default_texture_filter`: **`0 (Nearest)`** (Wajib agar pixel tidak buram).
    * `compress/mode`: **`Lossless`** (Menjaga ketajaman warna pixel art tanpa kompresi artefak).
    * `mipmaps/generate`: **`false`** (Dinonaktifkan untuk grafis 2D murni).
+

@@ -34,3 +34,4 @@ func physics_update(delta: float) -> void:
 	if player.velocity_component:
 		player.velocity_component.decelerate(delta)
 		player.velocity_component.apply_to_body(player)
+

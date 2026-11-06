@@ -105,27 +105,33 @@ Player (CharacterBody2D) [Script: player.gd]
 │   └── CollisionShape2D
 ├── HurtboxComponent (Area2D - Collision: Layer 3, Mask: Layer 6)
 │   └── CollisionShape2D
-├── InteractionDetector (Area2D - Collision: Layer 0, Mask: Layer 7)
+├── InteractionComponent (Area2D - Collision: Layer 0, Mask: Layer 8: 128) [Script: interaction_component.gd]
 │   └── CollisionShape2D
 └── Camera2D (Position Smoothing, Pixel Snap, Viewport Limits)
 ```
 
-### 3.2 Struktur Dunia Game (`world.tscn`)
-Godot 4.3+ dan 4.7 menstandarisasi `TileMapLayer`:
+### 3.2 Struktur Dunia Game (`WorldBase` / `world.tscn`)
+Godot 4.3+ dan 4.7 menstandarisasi `TileMapLayer` dan pemisahan lapisan Y-Sort presisi:
 
 ```text
-World (Node2D)
+WorldBase (Node2D) [Script: world_base.gd]
 ├── GroundLayer (TileMapLayer - Rumput, jalan, lantai tanpa collision)
-├── WallDecoLayer (TileMapLayer - Dinding bawah, dekorasi tanah)
+├── WallDecorationLayer (TileMapLayer - Dinding bawah, karpet, dekorasi tanah)
 ├── YSortEntities (Node2D - y_sort_enabled = true)
-│   ├── SolidObjectsLayer (TileMapLayer - Bangunan bercollision dengan y-sort)
-│   ├── Player (Instanced Scene)
-│   ├── Enemies (Node2D penampung musuh)
-│   ├── NPCs (Node2D penampung NPC)
-│   └── DroppedItems (Node2D penampung loot di tanah)
-├── OverheadLayer (TileMapLayer - Atap gedung, kanopi pohon di atas karakter)
-├── CanvasModulate (Pewarnaan siklus siang-malam / pencahayaan)
-└── UI_CanvasLayer (CanvasLayer - Lapisan HUD dan Kontrol Sentuh)
+│   ├── SolidObjectsLayer (TileMapLayer - y_sort_enabled = true, collision layer 1)
+│   ├── Player (Instanced Scene - CharacterBody2D)
+│   └── Interactables (Node2D - y_sort_enabled = true)
+│       ├── TreasureChest (StaticBody2D - peti interaktif, frame 0/1)
+│       ├── InformationBoard (StaticBody2D - papan signpost lore kampus)
+│       ├── CampusDoor / ExitDoor (Node2D - doorway transisi antar area)
+│       └── Trees (StaticBody2D - pohon kampus dengan y-sort origin di alas batang)
+├── OverheadLayer (TileMapLayer - z_index = 5, kanopi pohon/atap di atas entitas)
+├── WorldBoundaries (StaticBody2D - Layer 1 StaticBody pembatas tepi map)
+├── SpawnPoints (Node2D - Koleksi Marker2D untuk posisi masuk/keluar)
+│   ├── default (Marker2D)
+│   └── from_building / from_outdoor (Marker2D)
+├── TouchControls (CanvasLayer layer 10 - VirtualJoystick & Action/Interact Buttons)
+└── HUD (CanvasLayer layer 5 - State, Speed, Facing, Pause, PromptLabel)
 ```
 
 ---

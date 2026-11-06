@@ -14,7 +14,7 @@
 | :---: | :--- | :---: | :---: |
 | **Phase 1** | Project Foundation | **COMPLETED** | 1 (Immediate Next) |
 | **Phase 2** | Character Foundation | **COMPLETED** | 2 |
-| **Phase 3** | World & Exploration | **PLANNED** | 3 |
+| **Phase 3** | World & Exploration | **COMPLETED** | 3 |
 | **Phase 4** | Combat System | **PLANNED** | 4 |
 | **Phase 5** | Loot & Progression | **PLANNED** | 5 |
 | **Phase 6** | Quest & Dungeon | **PLANNED** | 6 |
@@ -82,21 +82,22 @@
 ## Phase 3: World & Exploration
 
 * **Tujuan:** Membangun pipeline level dengan `TileMapLayer`, pengelompokan Y-Sort, pintu gerbang/transisi level, dan sistem interaksi objek lingkungan.
-* **Status Pekerjaan:** **PLANNED**
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated test suite `tests/test_phase_3.gd`, 69/69 assertions pass; 187/187 total project regression pass)
 * **Dependencies:** Phase 1, Phase 2.
 * **Daftar Pekerjaan:**
-  1. Setup arsitektur level menggunakan `TileMapLayer` bertingkat (Ground, Wall, Solid, Overhead).
-  2. Pengaturan Y-Sort layer pada semua entitas dinamis (pemain, NPC, objek).
-  3. Pembuatan `InteractionComponent` dan `InteractableArea2D` untuk peti, pintu, papan pengumuman.
-  4. Pembuatan `SceneTransitionTrigger` yang terhubung ke `SceneManager` untuk perpindahan map/ruangan.
-  5. Setup test level (lingkungan kampus Untidar / outdoor prototype).
+  1. Setup arsitektur level menggunakan `TileMapLayer` bertingkat (GroundLayer, WallDecorationLayer, YSortEntities [SolidObjectsLayer, Player, Interactables], OverheadLayer, WorldBoundaries).
+  2. Pengaturan Y-Sort layer pada semua entitas dinamis (pemain, NPC, objek pohon/peti/papan) dengan anchor pivot di alas/kaki.
+  3. Pembuatan `InteractionComponent` dan `Interactable` (Area2D layer 8) untuk peti, pintu, papan pengumuman.
+  4. Pembuatan `Door` yang terhubung ke `SceneManager.change_scene_with_spawn` untuk perpindahan map/ruangan dengan spawn point.
+  5. Setup test level prototype kampus Untidar (`outdoor_test.tscn`, `building_test.tscn`, dan integrasi `main.tscn`).
 * **Expected Deliverables:**
   - Template level fungsional dengan tabrakan dinding dan sorting kedalaman yang presisi.
   - Pemain dapat berinteraksi dengan objek dunia via tombol `E` / Touch Interact.
-  - Transisi antar level berjalan mulus dengan efek fade-in/fade-out.
+  - Transisi antar level berjalan mulus dengan efek fade-in/fade-out dan penempatan spawn point yang akurat.
 * **Acceptance Criteria:**
   - Karakter dapat berjalan di depan dan di belakang pohon/bangunan dengan kedalaman visual yang benar.
   - Pemain tidak tembus dinding atau terjepit di sudut sempit.
+  - Objek interaktif menampilkan prompt teks kontekstual dan tombol sentuh bereaksi secara instan.
 
 ---
 

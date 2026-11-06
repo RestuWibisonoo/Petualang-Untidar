@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://c7x9m3k5p1r02"]
+[gd_scene format=3 uid="uid://c7yam3k5p1r02"]
 
 [ext_resource type="Script" path="res://scripts/ui/info_dialog_panel.gd" id="1_panel"]
 
@@ -99,3 +99,4 @@ theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 theme_override_font_sizes/font_size = 8
 text = "Tekan [ESC], [E], atau klik/sentuh tombol Tutup"
 horizontal_alignment = 1
+

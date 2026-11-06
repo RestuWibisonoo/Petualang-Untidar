@@ -68,3 +68,4 @@ func _on_backdrop_gui_input(event: InputEvent) -> void:
 		close_panel()
 	elif event is InputEventScreenTouch and event.pressed:
 		close_panel()
+

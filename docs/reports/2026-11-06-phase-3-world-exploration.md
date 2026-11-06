@@ -23,7 +23,7 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 8. Pembuatan level prototipe Kampus Untidar: Area Halaman Luar (`outdoor_test.tscn`) dan Interior Gedung Kuliah Bersama (`building_test.tscn`).
 9. Integrasi kontrol sentuh (tombol `InteractButton` pada `TouchControls`) dan UI kontekstual `PromptLabel`.
 10. Integrasi penuh ke `scenes/main/main.tscn` sehingga eksekusi F5 langsung membuka dunia kampus interaktif.
-11. Pengujian terpisah: Automated unit tests (89 assertions), Runtime physics & loop tests (33 assertions), Manual visual test, dan status pengujian fisik Android.
+11. Pengujian terpisah: Automated unit tests (89 assertions), Runtime physics & SceneManager transition tests (69 assertions), Manual visual test, dan status pengujian fisik Android.
 
 ---
 
@@ -36,7 +36,7 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 5. Membangun objek peti satu kali buka, panel pengumuman yang memunculkan teks lore kampus secara lengkap, dan pintu yang memicu transisi scene dengan fade visual.
 6. Mengimplementasikan perpindahan antar-area dengan penempatan posisi karakter ke node `Marker2D` yang sesuai.
 7. Menyediakan tombol interaksi pada HUD layar sentuh dan petunjuk tombol keyboard `[E]`.
-8. Memvalidasi seluruh implementasi melalui 89 assertion automated test dan 33 assertion runtime test di Phase 3 (total proyek 240 assertions lulus tanpa galat).
+8. Memvalidasi seluruh implementasi melalui 89 assertion automated test dan 69 assertion runtime test di Phase 3 (total proyek 276 assertions lulus tanpa galat).
 
 ---
 
@@ -61,7 +61,7 @@ Mengimplementasikan seluruh fondasi dunia dan eksplorasi pada **Phase 3: World &
 * `scenes/world/outdoor_test.tscn`: Prototipe area halaman luar Kampus Untidar.
 * `scenes/world/building_test.tscn`: Prototipe interior Gedung Kuliah Bersama (GKB).
 * `tests/test_phase_3.gd`: Automated test suite untuk Phase 3 (89 assertions).
-* `tests/runtime_validation_phase_3.gd`: Runtime simulation test suite untuk fisika, Y-Sort, transisi scene, dan UI (33 assertions).
+* `tests/runtime_validation_phase_3.gd`: Runtime simulation test suite untuk fisika, Y-Sort, transisi scene produksi, dan UI (69 assertions).
 
 ### B. File yang Dimodifikasi
 * `scripts/autoload/event_bus.gd`: Ditambahkan sinyal `info_panel_requested(title, content)` dan `info_panel_closed`.
@@ -237,30 +237,64 @@ Dijalankan via: `godot --headless -s tests/test_phase_3.gd`
 * **Hasil:** **89 assertions PASSED, 0 FAILED**.
 * Menguji: Struktur node semua scene level, ketersediaan layer, Y-sort enabled, collision bitmask, interaction queue, open/close InformationBoard, panel display & keyboard/touch close, chest one-time open, door parameter validation, spawn point routing logic, dan touch control hooks.
 
-### 13.2 Runtime Physics & Transition Simulation (`tests/runtime_validation_phase_3.gd`)
+### 13.2 Runtime Physics & Production Transition Simulation (`tests/runtime_validation_phase_3.gd`)
 Dijalankan via: `godot --headless -s tests/runtime_validation_phase_3.gd`
-* **Hasil:** **33 assertions PASSED, 0 FAILED**.
-* **Uji Tabrakan Batang Pohon:** Karakter bergerak lurus ke utara menuju pohon di `(-120, 20)`. Berhenti di titik kontak presisi $Y = 24.0$ tanpa penetrasi ke batang ($Y < 23.5$).
-* **Uji Tabrakan Dinding TileMapLayer:** Karakter bergerak ke utara menuju dinding solid di `Y = -120`. Berhenti di $Y = -114.0$ tanpa tembus.
-* **Uji Batas Map:** Karakter bergerak ke barat menuju pembatas map di `X = -330`. Berhenti di $X = -314.0$.
-* **Uji Sliding Sudut Diagonal:** Karakter mendorong sudut kiri-atas `Vector2(-1, -1)`. Karakter tertahan tanpa penetrasi batas ($X \ge -322, Y \ge -242$), dan saat arah diubah ke kanan `Vector2(1, 0)`, karakter meluncur bebas ($X$ naik dari $-314 \to -273.9$) tanpa macet/deadlock.
-* **Uji Y-Sort Dinamis:** Karakter di selatan pohon ($Y = 50$) terbukti berposisi di depan pohon; di utara pohon ($Y = -10$) terbukti di belakang kanopi. `OverheadLayer` dengan $Z=5$ selalu di atas karakter.
-* **Uji Live Information Board:** Interaksi membuka modal, mengisi judul dan konten, membekukan physics pemain, mematikan interaksi board; penutupan modal memulihkan physics dan mengaktifkan kembali interaksi board.
-* **Uji Loop Transisi Nyata:**
-  * Outdoor spawn `default`: `(0, 40)`
-  * Transisi ke Building spawn `from_outdoor`: `(0, 75)` (bukan default)
-  * Transisi kembali ke Outdoor spawn `from_building`: `(0, -85)` (bukan default)
-  * Proteksi transisi ganda aktif menolak panggilan beruntun saat transisi sedang berjalan.
+* **Hasil:** **69 assertions PASSED, 0 FAILED**.
+* **A. Uji Fisika Collision & Corner Sliding (7 assertions):**
+  * *Batang Pohon:* Karakter bergerak lurus ke utara menuju pohon di `(-120, 20)`. Berhenti di titik kontak presisi $Y = 24.0$ tanpa penetrasi ke batang ($Y < 23.5$).
+  * *Batas Map:* Karakter bergerak ke barat menuju pembatas map di `X = -330`. Berhenti di $X = -314.0$.
+  * *Dinding TileMapLayer:* Karakter bergerak ke utara menuju dinding solid di `Y = -120`. Berhenti di $Y = -114.0$ tanpa tembus.
+  * *Sudut Diagonal & Corner Sliding:* Karakter mendorong sudut kiri-atas `Vector2(-1, -1)`. Karakter tertahan tanpa penetrasi batas ($X \ge -322, Y \ge -242$), dan saat input diubah ke kanan `Vector2(1, 0)`, karakter meluncur bebas ($X$ naik dari $-314 \to -273.9$) tanpa macet/deadlock.
+* **B. Uji Hirarki Y-Sort, Z-Index & Geometri Oklusi (18 assertions):**
+  * *Rantai Pewarisan Y-Sort:* Seluruh kontainer dan objek (`YSortEntities`, `Interactables`, `SolidObjectsLayer`, `Tree1`, `Tree2`, `Tree3`, `TreasureChest`, `InformationBoard`) memiliki `y_sort_enabled = true`.
+  * *Isolasi Z-Index:* Player, Tree1, dan TreasureChest berada pada `z_index = 0` (mendelegasikan urutan render sepenuhnya ke evaluasi Y-Sort).
+  * *Overhead Layer:* `OverheadLayer` memiliki `z_index = 5` (terbukti $\ge 5$), menjamin selalu dirender di atas entitas terlepas dari koordinat Y.
+  * *Geometri Oklusi Pohon & Pemain:*
+    * Pohon memiliki pivot alas di $Y = 20.0$. Kanopi dedaunan membentang pada $Y \in [-40, 4]$, batang membentang pada $Y \in [4, 24]$.
+    * Sprite Player memiliki tinggi 32px (rentang $[Y - 16, Y + 16]$).
+    * Saat Player di utara pohon ($Y = 0.0 < 20.0$): Bounds sprite Player $[-16, 16]$ tumpang-tindih dengan kanopi $[-40, 4]$. Karena $Y_{player} < Y_{tree}$, Pohon dirender di atas Player $\implies$ Player terhalang di balik kanopi.
+    * Saat Player di selatan pohon ($Y = 40.0 > 20.0$): Bagian atas Player ($Y = 24.0$) menyentuh alas batang ($Y = 24.0$). Karena $Y_{player} > Y_{tree}$, Player dirender di atas Pohon $\implies$ Player menutupi pangkal batang.
+* **C. Uji Interaksi UI Information Board di Level (12 assertions):**
+  * Papan informasi dan `InfoDialogPanel` terverifikasi ada di HUD level.
+  * Status awal panel tertutup dan tidak terlihat.
+  * Pemicuan interaksi berhasil membuka panel modal, menampilkan `board_title` dan `board_content` lengkap, menonaktifkan physics player, dan menonaktifkan interaksi pada papan (pencegahan spam).
+  * Penutupan panel via `close_panel()` menutup modal secara bersih, menyembunyikan panel, mengembalikan physics player, dan mengaktifkan kembali interaktivitas papan.
+* **D. Uji Siklus Transisi Produksi SceneManager (32 assertions):**
+  * *Kesiapan Autoload:* `SceneManager` aktif di `PROCESS_MODE_ALWAYS` dengan overlay CanvasLayer 100 dan `FadeRect`.
+  * *Spawn Awal:* Scene Outdoor dimuat sebagai `current_scene`. Pemain ditempatkan pada marker `default` $(0.0, 40.0)$. Spawn ID dikosongkan.
+  * *Integritas SceneTree:* Terbukti hanya ada tepat 1 instans `WorldBase` di root dan 1 instans `Player` di scene tree.
+  * *Transisi Outdoor $\to$ Building via `change_scene_with_spawn()`:*
+    * `is_transitioning()` bernilai `true`. Target spawn ID disetel ke `&"from_outdoor"`.
+    * `FadeRect.mouse_filter` berubah menjadi `MOUSE_FILTER_STOP` (memblokir input klik/sentuh selama fade-out).
+    * Panggilan transisi ganda (`change_scene_to_file`) ditolak dengan aman tanpa mengganggu transisi yang sedang berjalan.
+    * Setelah transisi selesai, `current_scene` menjadi `BuildingTest`.
+    * `is_transitioning()` kembali `false`.
+    * Spawn ID berhasil dibersihkan (`&""`).
+    * `FadeRect.mouse_filter` kembali `MOUSE_FILTER_IGNORE` dan opasitas alpha kembali 0.0.
+    * Pemain diposisikan presisi pada marker `from_outdoor` $(0.0, 75.0)$ (bukan default).
+    * Scene lama `OutdoorTest` terhapus bersih dari memori (tepat 1 instans `WorldBase` dan 1 `Player` tersisa).
+  * *Transisi Balik Building $\to$ Outdoor via `change_scene_with_spawn()`:*
+    * `is_transitioning()` bernilai `true`. Target spawn ID disetel ke `&"from_building"`.
+    * Setelah transisi selesai, `current_scene` kembali `OutdoorTest`.
+    * `is_transitioning()` kembali `false`. Spawn ID bersih (`&""`).
+    * Pemain diposisikan presisi pada marker `from_building` $(0.0, -85.0)$ (bukan default).
+    * Scene lama `BuildingTest` terhapus bersih dari memori (tepat 1 instans `WorldBase` dan 1 `Player` tersisa, tanpa kebocoran).
 
 ### 13.3 Manual Visual & Interactive Tests
-* Berjalan di sekitar pohon Untidar: Sorting visual antara dedaunan dan tubuh karakter bertransisi mulus tanpa flickering.
-* Membaca papan pengumuman: Panel popup muncul di tengah layar, teks tajam terbaca jelas pada viewport 640x360, tombol `TUTUP [X]` dapat diklik mouse, tombol `ESC` dan `E` menutup panel secara instan.
-* Berjalan melewati doorway: Fade hitam menutup layar secara halus, karakter muncul di depan gedung/di dalam ruangan tanpa jeda janggal.
+Diverifikasi melalui eksekusi GUI/Windowed:
+* **Y-Sorting di Sekitar Pohon:** Berjalan melingkari pohon; karakter secara halus berpindah dari belakang dedaunan ke depan batang tanpa frame tearing atau popping instan.
+* **OverheadLayer Gedung:** Karakter berjalan di bawah kanopi teras gedung; atap tetap berada di layer visual paling atas menutup kepala karakter.
+* **Panel Dialog Informasi:** Modal pop-up berlatar gelap transparan muncul di tengah layar; teks tajam terbaca jelas pada viewport 640x360; tombol `[X]` merespons klik mouse; tombol `ESC`, `E`, `Enter`, dan tap area luar menutup modal secara responsif.
+* **Transisi Layar:** Efek fade-out hitam 0.3s menutup layar secara lembut, scene berpindah di belakang layer hitam, dan fade-in memunculkan karakter di posisi spawn point baru tanpa ada frame lompatan visual.
 
 ### 13.4 Status Pengujian Perangkat Android Fisik
-* **Status Saat Ini:** **BELUM DILAKUKAN PADA HARDWARE HP FISIK**.
-* **Pengujian Sentuh yang Telah Divalidasi:** Validasi touchscreen emulation di Godot (`DisplayServer.is_touchscreen_available()`), sensor orientasi landscape, tombol `InteractButton` ($50 \times 50$ px), joystick sentuh analog, dan pengetukan tombol tutup modal.
-* **Rencana Pengujian Fisik:** Build APK/AAB dan testing langsung pada smartphone Android dijadwalkan pada **Phase 8: Deployment & Optimization**.
+* **Status Saat Ini:** **PENDING (Belum dilakukan pada hardware HP fisik)**.
+* **Pengujian Sentuh yang Telah Divalidasi:**
+  * Sensor orientasi landscape (sensor_landscape = 6).
+  * Virtual Joystick analog mengambang dinamis.
+  * Tombol sentuh `%InteractButton` ($50 \times 50$ px, memenuhi standar minimum 48px aksesibilitas sentuh).
+  * Tombol tutup dialog sentuh modal ($36 \times 36$ px).
+* **Rencana Pengujian Fisik:** Export APK bertandatangan debug/release dan pengujian pada berbagai model smartphone fisik (layar notch/punch-hole) dijadwalkan pada **Phase 8: Deployment & Optimization**.
 
 ---
 
@@ -273,19 +307,28 @@ Seluruh suite pengujian otomatis dijalankan berturut-turut untuk memastikan stab
 | `tests/test_phase_1.gd` | Core Settings, Inputs, Autoloads, Components, FSM | 45 | **PASS (45/45)** |
 | `tests/test_phase_2.gd` | Player Entity, 8-Dir Move, ModularVisuals, Camera, Touch | 73 | **PASS (73/73)** |
 | `tests/test_phase_3.gd` | TileMapLayer, Y-Sort, Boundaries, Interaction, Doors, InfoDialog | 89 | **PASS (89/89)** |
-| `tests/runtime_validation_phase_3.gd` | Collision physics, corner sliding, live loop, info panel in level | 33 | **PASS (33/33)** |
-| **TOTAL** | **Seluruh Fondasi Proyek Petualang Untidar** | **240** | **100% PASS** |
+| `tests/runtime_validation_phase_3.gd` | Collision physics, corner sliding, recursive Y-sort, production scene loop | 69 | **PASS (69/69)** |
+| **TOTAL** | **Seluruh Fondasi Proyek Petualang Untidar** | **276** | **100% PASS** |
 
 Pengujian eksekusi simulasi 60 frame `scenes/main/main.tscn` berhasil keluar dengan kode exit `0` tanpa error konsol.
 
 ---
 
-## 15. Known Issues & Observasi Teknis
+## 15. Known Issues, Technical Debt & Observasi Teknis
 
+### 15.1 Observasi Teknis
 1. **TileMapLayer Physics Flushing di Godot 4:**
    - Objek `TileMapLayer` menginisialisasi quadrant collision bodies secara asinkron pada frame physics pertama. Pengujian headless physics wajib memanggil `await physics_frame` sebelum mengeksekusi kalkulasi tabrakan `move_and_slide()`.
-2. **Simulasi Perangkat Mobile:**
-   - Walaupun kontrol sentuh telah lulus 100% pada emulasi layar sentuh, pengujian gesture multi-touch kompleks pada hardware Android bertipe layar notch / cut-out tetap perlu ditinjau saat penyusunan pipeline export di Phase 8.
+2. **Godot Headless Rendering Driver:**
+   - Eksekusi engine dalam mode `--headless` menggunakan display driver `dummy` yang tidak mengeksekusi GPU rasterisasi framebuffer. Pengujian raster pixel langsung (`get_texture().get_image()`) membutuhkan GPU context aktif; validasi Y-sort otomatis diverifikasi via hierarki pewarisan canvas item, Z-index isolation, dan kalkulasi geometri bounding box.
+
+### 15.2 Technical Debt yang Masih Tersisa
+1. **Audio SFX Assets:**
+   - Interaksi pintu dan peti harta saat ini masih menggunakan fallback visual (teks melayang / rotasi sprite) karena file audio format WAV/OGG untuk suara langkah kaki, buka pintu, dan peti belum diimpor ke folder `assets/audio/sfx/`.
+2. **Pustaka Tilemap Koleksi Lebih Kaya:**
+   - Tileset `prototype_tileset.png` saat ini masih menggunakan 5 ragam tile dasar (rumput, bunga, batu, tembok, lantai). Perluasan variasi visual lingkungan kampus (seperti paving block, meja lab, proyektor) dapat ditambahkan seiring pengembangan level berikutnya.
+3. **Hardware-Specific Touch Testing:**
+   - Uji sentuhan pada multi-touch gestures dan penyesuaian safe-area notch Android baru akan diuji secara komprehensif pada Phase 8.
 
 ---
 

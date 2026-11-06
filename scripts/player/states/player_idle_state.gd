@@ -23,6 +23,10 @@ func physics_update(delta: float) -> void:
 
 	player.current_input_direction = player.get_movement_input()
 
+	if Input.is_action_just_pressed("attack"):
+		state_machine.transition_to(&"attack")
+		return
+
 	if Input.is_action_just_pressed("dodge"):
 		state_machine.transition_to(&"roll")
 		return

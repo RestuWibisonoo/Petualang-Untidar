@@ -65,6 +65,13 @@ target_scene_path = "res://scenes/world/building_test.tscn"
 target_spawn_id = &"from_outdoor"
 door_label = "Masuk Gedung Kuliah"
 
+[node name="ArenaDoor" type="Node2D" parent="YSortEntities/Interactables" instance=ExtResource("6_ynhf2")]
+y_sort_enabled = true
+position = Vector2(-180, 40)
+target_scene_path = "res://scenes/world/combat_arena.tscn"
+target_spawn_id = &"from_outdoor"
+door_label = "Masuk Arena Tempur"
+
 [node name="Tree1" type="StaticBody2D" parent="YSortEntities/Interactables" unique_id=1997151621 instance=ExtResource("7_dpe4d")]
 y_sort_enabled = true
 position = Vector2(-120, 20)
@@ -110,6 +117,9 @@ position = Vector2(0, 40)
 
 [node name="from_building" type="Marker2D" parent="SpawnPoints" unique_id=160632636]
 position = Vector2(0, -85)
+
+[node name="from_arena" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(-150, 40)
 
 [node name="TouchControls" type="CanvasLayer" parent="." unique_id=1534716580 instance=ExtResource("8_sh802")]
 layer = 10

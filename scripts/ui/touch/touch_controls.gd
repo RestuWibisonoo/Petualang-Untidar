@@ -12,6 +12,7 @@ extends CanvasLayer
 @onready var virtual_joystick: TouchVirtualJoystick = %VirtualJoystick
 @onready var dodge_button: Button = %DodgeButton
 @onready var interact_button: Button = %InteractButton
+@onready var attack_button: Button = get_node_or_null("%AttackButton") as Button
 
 
 func _ready() -> void:
@@ -28,6 +29,10 @@ func _ready() -> void:
 	if interact_button:
 		interact_button.button_down.connect(_on_interact_button_down)
 		interact_button.button_up.connect(_on_interact_button_up)
+
+	if attack_button:
+		attack_button.button_down.connect(_on_attack_button_down)
+		attack_button.button_up.connect(_on_attack_button_up)
 
 
 func _check_touch_visibility() -> void:
@@ -69,3 +74,13 @@ func _on_interact_button_down() -> void:
 
 func _on_interact_button_up() -> void:
 	Input.action_release("interact")
+
+
+func _on_attack_button_down() -> void:
+	Input.action_press("attack")
+	if target_player:
+		target_player.trigger_attack()
+
+
+func _on_attack_button_up() -> void:
+	Input.action_release("attack")

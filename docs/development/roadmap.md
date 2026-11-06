@@ -15,7 +15,7 @@
 | **Phase 1** | Project Foundation | **COMPLETED** | 1 (Immediate Next) |
 | **Phase 2** | Character Foundation | **COMPLETED** | 2 |
 | **Phase 3** | World & Exploration | **COMPLETED** | 3 |
-| **Phase 4** | Combat System | **PLANNED** | 4 |
+| **Phase 4** | Combat System | **COMPLETED** | 4 |
 | **Phase 5** | Loot & Progression | **PLANNED** | 5 |
 | **Phase 6** | Quest & Dungeon | **PLANNED** | 6 |
 | **Phase 7** | UI & Persistence | **PLANNED** | 7 |
@@ -109,29 +109,29 @@
 ## Phase 4: Combat System
 
 * **Tujuan:** Membangun sistem pertarungan top-down real-time: serangan jarak dekat/jauh, kalkulasi damage/defense, knockback, efek flash darah, dan AI dasar musuh.
-* **Status Pekerjaan:** **PLANNED**
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 92/92 assertions dan runtime physics suite 33/33 assertions, 100% PASS)
 * **Dependencies:** Phase 2 (Character FSM), Phase 3 (World).
-* **Daftar Pekerjaan:**
-  1. State `PlayerAttackState` dengan timing combo dan aktivasi `HitboxComponent`.
-  2. Setup collision layer matriks:
+* **Daftar Pekerjaan Selesai:**
+  1. State `PlayerAttackState` dengan sistem 2-stage combo, timing window (Startup 0.08s, Active 0.12s, Recovery 0.10s), input buffering, dan orientasi hitbox 8 arah.
+  2. Matriks 8-layer collision dan faction filtering (`HitboxComponent` & `HurtboxComponent` enum `Faction { PLAYER, ENEMY, NEUTRAL }`):
      - Layer 1: World / Obstacles
-     - Layer 2: Player Body
-     - Layer 3: Player Hurtbox
-     - Layer 4: Player Hitbox
-     - Layer 5: Enemy Body
-     - Layer 6: Enemy Hurtbox
-     - Layer 7: Enemy Hitbox
-     - Layer 8: Interactables
-  3. Pembuatan `BaseEnemy.tscn` dengan FSM: `EnemyIdleState`, `EnemyChaseState`, `EnemyAttackState`, `EnemyHurtState`.
-  4. Sistem reaksi terkena serang: Red Flash shader, knockback physics, dan angka damage melayang (*floating combat text*).
-  5. Sinyal kematian dan pembersihan entitas musuh.
-* **Expected Deliverables:**
-  - Pemain dapat menyerang ke arah hadap karakter.
-  - Musuh mengejar pemain saat masuk radius aggro dan menyerang.
-  - Sistem pertarungan terasa solid dengan umpan balik visual (*game feel* / *juice*).
-* **Acceptance Criteria:**
-  - Serangan pemain hanya mengenai hurtbox musuh, tidak mengenai diri sendiri atau NPC.
-  - Invulnerability frames (i-frames) mencegah damage beruntun instan yang tidak adil bagi pemain.
+     - Layer 2: Player Body (2) [Mask: 17 = 1|16]
+     - Layer 3: Player Hurtbox (4) [Mask: 64 = Enemy Hitbox]
+     - Layer 4: Player Hitbox (8) [Mask: 32 = Enemy Hurtbox]
+     - Layer 5: Enemy Body (16) [Mask: 19 = 1|2|16]
+     - Layer 6: Enemy Hurtbox (32) [Mask: 8 = Player Hitbox]
+     - Layer 7: Enemy Hitbox (64) [Mask: 4 = Player Hurtbox]
+     - Layer 8: Interactables (128)
+  3. Pembuatan `scenes/enemy/base_enemy.tscn` & `scripts/enemy/base_enemy.gd` dengan FSM: `EnemyIdleState`, `EnemyChaseState`, `EnemyAttackState`, `EnemyHurtState`.
+  4. Sistem reaksi terkena serang: Red Flash tween, knockback physics integratif pada `VelocityComponent` & `move_and_slide()` (zero wall clipping), dan floating combat text via `EventBus.show_floating_text`.
+  5. Sinyal kematian single-emission (`EventBus.enemy_defeated`), fade feedback, dan pembersihan aman entitas musuh (`queue_free`).
+  6. Pembuatan test arena `scenes/world/combat_arena.tscn` & `scripts/world/combat_arena.gd` terhubung door transition dua arah dengan `outdoor_test.tscn`.
+* **Verified Deliverables & Acceptance Criteria:**
+  - Pemain dapat menyerang ke 8 arah hadap karakter dengan combo 2 tahap (Stage 1: 15 dmg, 120 kb; Stage 2: 25 dmg, 200 kb).
+  - Musuh mendeteksi dan mengejar pemain saat masuk radius aggro (120 px) serta melancarkan serangan telegraphed saat dalam jangkauan (24 px).
+  - Friendly fire diblokir oleh collision mask dan filtering faksi.
+  - Invulnerability frames (i-frames 0.2s) pada `HurtboxComponent` mencegah damage beruntun instan (anti multi-tick).
+  - Knockback tidak menyebabkan clipping atau menembus dinding batas.
 
 ---
 

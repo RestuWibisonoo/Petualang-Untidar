@@ -232,3 +232,49 @@
   3. Layar fade-to-black dari `SceneManager` menyembunyikan frame perpindahan posisi karakter secara elegan.
 * **Konsekuensi:** Setiap scene level yang mendukung transisi wajib memiliki node `SpawnPoints` berisi minimal satu `Marker2D` bernama `default`.
 
+---
+
+### ADR-016: 8-Layer Combat Collision Matrix & Faction Filtering
+
+* **Konteks:** Sistem combat memerlukan pemisahan fisik yang ketat antara tubuh karakter/musuh, area serang (hitbox), dan area terima serang (hurtbox) agar tidak terjadi friendly fire, self-damage, atau overlap tabrakan fisik dengan kalkulasi serangan.
+* **Keputusan:** Menerapkan matriks 8-layer diskrit dan enumerasi faksi (`Faction { PLAYER = 0, ENEMY = 1, NEUTRAL = 2 }`):
+  1. **Layer 1: World (1):** Rintangan statis, dinding batas, dan dekorasi solid.
+  2. **Layer 2: Player Body (2) [Mask: 17 = World 1 + Enemy Body 16]:** Tubuh fisik pemain.
+  3. **Layer 3: Player Hurtbox (4) [Mask: 64 = Enemy Hitbox]:** Area terima serang pemain.
+  4. **Layer 4: Player Hitbox (8) [Mask: 32 = Enemy Hurtbox]:** Area serang tebasan senjata pemain.
+  5. **Layer 5: Enemy Body (16) [Mask: 19 = World 1 + Player Body 2 + Enemy Body 16]:** Tubuh fisik musuh.
+  6. **Layer 6: Enemy Hurtbox (32) [Mask: 8 = Player Hitbox]:** Area terima serang musuh.
+  7. **Layer 7: Enemy Hitbox (64) [Mask: 4 = Player Hurtbox]:** Area serang musuh.
+  8. **Layer 8: Interactables (128):** Objek interaktif dunia.
+* **Alasan Pemilihan:**
+  1. Pemisahan layer fisika di level engine (Godot Physics Server) memangkas kalkulasi tabrakan yang tidak relevan secara optimal (zero CPU overhead untuk pasangan non-mask).
+  2. Faction filtering level komponen memastikan fleksibilitas masa depan jika ada status faksi dinamis (misal: minion yang dikontrol atau status confusio/berserk).
+* **Konsekuensi:** Setiap entitas bersenjata wajib mengonfigurasi layer dan mask sesuai spesifikasi matriks dan menentukan enum faksi pada `HitboxComponent` dan `HurtboxComponent`.
+
+---
+
+### ADR-017: Player 2-Stage Attack Combo, Input Buffering & 8-Directional Orientation
+
+* **Konteks:** Pemain membutuhkan kontrol serangan aksi yang responsif, berbobot, dan mengalir alami dari pergerakan 8 arah, dengan kemampuan merangkai combo tanpa menuntut presisi tombol berbingkai tunggal (*frame-perfect*).
+* **Keputusan:** Mengimplementasikan **`PlayerAttackState`** dengan sistem combo 2 tahap, pembagian jendela waktu per serangan (Startup 0.08s, Active 0.12s, Recovery 0.10s), input buffering tombol serang, dan orientasi hitbox 8 arah.
+* **Alasan Pemilihan:**
+  1. Pembagian jendela waktu (startup/active/recovery) memberikan bobot tebasan senjata pixel-art yang memuaskan dan telegraphed.
+  2. Input buffering selama active/recovery window memungkinkan pemain menekan tombol serang kedua sebelum animasi selesai, lalu engine mengeksekusi serangan lanjutan secara mulus (Stage 2: 25 damage, 200 knockback vs Stage 1: 15 damage, 120 knockback).
+  3. `PlayerAttackState` mendiselerasi pergerakan tubuh namun tetap memproses physics slide saat menerima dorongan luar.
+* **Konsekuensi:** `ModularVisuals` memutar animasi tebasan sesuai arah hadap (`attack_down`, `attack_up`, `attack_left`, `attack_right`) dengan fallback terisolasi jika aset frame visual tertentu belum tersedia.
+
+---
+
+### ADR-018: Hurtbox Single-Authority Invulnerability (I-Frames) & Physics Knockback Integration
+
+* **Konteks:** Mencegah bug multi-tick damage di mana satu ayunan tebasan mengenai musuh berkali-kali dalam beberapa frame berturut-turut, serta mencegah dorongan knockback menembus dinding batas (*wall clipping*).
+* **Keputusan:**
+  1. Menjadikan **`HurtboxComponent`** sebagai otoritas tunggal status kekebalan pasca-serang (*invulnerability frames / I-frames*). Status I-frames Hurtbox disinkronisasikan ke `HealthComponent.is_invulnerable`.
+  2. `HitboxComponent` menyimpan riwayat target yang sudah dikenai dalam ayunan aktif (`_hit_targets: Array[Area2D]`) dan di-reset pada setiap tebasan baru.
+  3. Impuls knockback dikelola melalui **`VelocityComponent.apply_knockback()`** dan diintegrasikan langsung ke dalam `CharacterBody2D.velocity` sebelum `move_and_slide()` dieksekusi.
+* **Alasan Pemilihan:**
+  1. Mengintegrasikan knockback ke dalam `move_and_slide()` memastikan algoritma deteksi rintangan bawaan engine menghentikan dorongan tepat di permukaan dinding (100% bebas bug tembus tembok).
+  2. Menempatkan logika I-frames pada hurtbox mencegah exploit pergantian senjata atau pemanggilan serangan ganda yang menimpa kalkulasi kekebalan target.
+* **Konsekuensi:** Durasi kekebalan (`invulnerability_duration`) dan gesekan peluruhan knockback (`knockback_friction`) harus dituning per tipe entitas (default 0.2s dan 800.0 px/s²).
+
+

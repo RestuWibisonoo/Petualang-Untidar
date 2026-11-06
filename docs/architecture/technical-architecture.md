@@ -67,9 +67,28 @@ Setiap komponen memiliki tanggung jawab tunggal (*Single Responsibility Principl
 | :--- | :--- | :--- |
 | **`HealthComponent`** | `Node` | Menyimpan HP saat ini, batas HP maksimal, sinyal pengurangan/penambahan darah, dan emisi sinyal kematian (`died`). |
 | **`VelocityComponent`** | `Node` | Mengatur kalkulasi akselerasi, gesekan (*friction*), deselerasi, dan kecepatan maksimum untuk pergerakan 8 arah. |
-| **`HitboxComponent`** | `Area2D` | Mengirim damage, knockback vector, dan efek status kepada Hurtbox lawan. |
-| **`HurtboxComponent`** | `Area2D` | Menerima damage dari Hitbox lawan, memicu frames kebal (*invincibility frames/i-frames*), dan meneruskan damage ke `HealthComponent`. |
+| **`HitboxComponent`** | `Area2D` | Mengirim damage, knockback vector, tracking single-hit per target, dan verifikasi faksi lawan. |
+| **`HurtboxComponent`** | `Area2D` | Menerima damage dari Hitbox lawan, menghitung pengurangan defense, memicu I-Frames, memancarkan efek hit flash & teks damage, dan memicu knockback fisik. |
 | **`InteractionComponent`** | `Area2D` | Mendeteksi objek di dunia (NPC, pintu, peti, item drop) yang dapat diinteraksi dengan tombol aksi. |
+
+### 2.3 Combat Architecture & 8-Layer Collision Matrix
+Sistem pertempuran Petualang Untidar dibangun di atas matriks fisika diskrit 8-layer dan filtering faksi independen (`Faction { PLAYER = 0, ENEMY = 1, NEUTRAL = 2 }`):
+
+| Layer | Nama Layer | Nilai Bitmask | Deteksi / Mask Target | Keterangan |
+| :--- | :--- | :--- | :--- | :--- |
+| **Layer 1** | World | `1` | `0` | Dinding solid, rintangan peta, batas arena. |
+| **Layer 2** | Player Body | `2` | `17` (`1` + `16`) | Tubuh fisik pemain (terhalang dinding dan musuh). |
+| **Layer 3** | Player Hurtbox | `4` | `64` | Area terima serang pemain (hanya mendeteksi Enemy Hitbox). |
+| **Layer 4** | Player Hitbox | `8` | `32` | Area serang senjata pemain (hanya mendeteksi Enemy Hurtbox). |
+| **Layer 5** | Enemy Body | `16` | `19` (`1` + `2` + `16`) | Tubuh fisik musuh (terhalang dinding, pemain, dan sesama musuh). |
+| **Layer 6** | Enemy Hurtbox | `32` | `8` | Area terima serang musuh (hanya mendeteksi Player Hitbox). |
+| **Layer 7** | Enemy Hitbox | `64` | `4` | Area serang musuh (hanya mendeteksi Player Hurtbox). |
+| **Layer 8** | Interactables | `128` | `0` | Objek dunia interaktif (pintu, papan, peti). |
+
+* **Kalkulasi Damage:** `final_damage = max(0, raw_damage - defense)`. Serangan dengan damage $\le 0$ diabaikan sepenuhnya.
+* **Knockback Integratif:** Impuls dihitung dari vektor `(target_pos - attacker_pos).normalized() * knockback_force`, disalurkan ke `VelocityComponent.apply_knockback()`, dan dieksekusi via `CharacterBody2D.move_and_slide()` untuk menjamin 0% risiko tembus tembok.
+* **I-Frames Tunggal:** `HurtboxComponent` menjadi otoritas tunggal kekebalan target setelah terkena serangan (`invulnerability_duration = 0.2s`).
+* **Combo Serang 2-Tahap:** `PlayerAttackState` membagi siklus serang menjadi *Startup* (0.08s), *Active Window* (0.12s, hitbox aktif), dan *Recovery* (0.10s), dengan input buffering pada stage 1 untuk combo stage 2 (Damage 15 -> 25, Knockback 120 -> 200).
 
 ---
 
@@ -101,9 +120,9 @@ Player (CharacterBody2D) [Script: player.gd]
 │   └── Hurt (Node) [Script: player_hurt_state.gd]
 ├── HealthComponent (Node) [Script: health_component.gd]
 ├── VelocityComponent (Node) [Script: velocity_component.gd]
-├── HitboxComponent (Area2D - Collision: Layer 4, Mask: Layer 5)
+├── HitboxComponent (Area2D - Collision: Layer 4: 8, Mask: Layer 6: 32) [Script: hitbox_component.gd]
 │   └── CollisionShape2D
-├── HurtboxComponent (Area2D - Collision: Layer 3, Mask: Layer 6)
+├── HurtboxComponent (Area2D - Collision: Layer 3: 4, Mask: Layer 7: 64) [Script: hurtbox_component.gd]
 │   └── CollisionShape2D
 ├── InteractionComponent (Area2D - Collision: Layer 0, Mask: Layer 8: 128) [Script: interaction_component.gd]
 │   └── CollisionShape2D
@@ -132,6 +151,26 @@ WorldBase (Node2D) [Script: world_base.gd]
 │   └── from_building / from_outdoor (Marker2D)
 ├── TouchControls (CanvasLayer layer 10 - VirtualJoystick & Action/Interact Buttons)
 └── HUD (CanvasLayer layer 5 - State, Speed, Facing, Pause, PromptLabel)
+```
+
+### 3.3 Struktur Entitas Musuh (`base_enemy.tscn`)
+Entitas musuh turunan `CharacterBody2D` dengan State Machine AI, komponen modular, dan visual y-sort:
+
+```text
+BaseEnemy (CharacterBody2D) [Script: base_enemy.gd] - Layer: 5 (16), Mask: 19 (1|2|16)
+├── CollisionShape2D (Lingkaran fisik kaki r = 7)
+├── Sprite2D (Sprite pixel art musuh, misal: dummy_slime.png)
+├── HealthComponent (Node - HP musuh) [Script: health_component.gd]
+├── VelocityComponent (Node - Max speed 50, knockback friction 800) [Script: velocity_component.gd]
+├── HurtboxComponent (Area2D - Layer 6: 32, Mask 4: 8, Faction: ENEMY) [Script: hurtbox_component.gd]
+│   └── CollisionShape2D
+├── HitboxComponent (Area2D - Layer 7: 64, Mask 3: 4, Faction: ENEMY) [Script: hitbox_component.gd]
+│   └── CollisionShape2D
+└── StateMachine (Node) [Script: state_machine.gd]
+    ├── Idle (Node - Deteksi aggro_radius) [Script: enemy_idle_state.gd]
+    ├── Chase (Node - Pengejaran target & deaggro) [Script: enemy_chase_state.gd]
+    ├── Attack (Node - Siklus serang & cooldown) [Script: enemy_attack_state.gd]
+    └── Hurt (Node - Durasi stagger & knockback) [Script: enemy_hurt_state.gd]
 ```
 
 ---

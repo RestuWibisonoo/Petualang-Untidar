@@ -18,6 +18,9 @@ extends CharacterBody2D
 @onready var interaction_component: InteractionComponent = get_node_or_null("InteractionComponent") as InteractionComponent
 @onready var hurtbox_component: HurtboxComponent = get_node_or_null("HurtboxComponent") as HurtboxComponent
 @onready var hitbox_component: HitboxComponent = get_node_or_null("HitboxComponent") as HitboxComponent
+@onready var inventory_manager: InventoryManager = get_node_or_null("InventoryManager") as InventoryManager
+@onready var equipment_manager: EquipmentManager = get_node_or_null("EquipmentManager") as EquipmentManager
+@onready var character_stats: CharacterStats = get_node_or_null("CharacterStats") as CharacterStats
 
 var current_input_direction: Vector2 = Vector2.ZERO
 var last_movement_direction: Vector2 = Vector2.DOWN
@@ -35,6 +38,7 @@ func _ready() -> void:
 		velocity_component.max_speed = walk_speed
 
 	_setup_combat_nodes()
+	_setup_progression_nodes()
 
 
 func _setup_combat_nodes() -> void:
@@ -98,6 +102,54 @@ func _on_hurtbox_hit_received(_hitbox: HitboxComponent) -> void:
 		var cur := state_machine.get_current_state_name()
 		if cur != &"roll" and cur != &"hurt":
 			state_machine.transition_to(&"hurt")
+
+
+func _setup_progression_nodes() -> void:
+	if not inventory_manager and has_node("InventoryManager"):
+		inventory_manager = $InventoryManager as InventoryManager
+	if not inventory_manager:
+		inventory_manager = InventoryManager.new()
+		inventory_manager.name = "InventoryManager"
+		add_child(inventory_manager)
+
+	if not character_stats and has_node("CharacterStats"):
+		character_stats = $CharacterStats as CharacterStats
+	if not character_stats:
+		character_stats = CharacterStats.new()
+		character_stats.name = "CharacterStats"
+		add_child(character_stats)
+
+	if not equipment_manager and has_node("EquipmentManager"):
+		equipment_manager = $EquipmentManager as EquipmentManager
+	if not equipment_manager:
+		equipment_manager = EquipmentManager.new()
+		equipment_manager.name = "EquipmentManager"
+		equipment_manager.inventory_manager = inventory_manager
+		equipment_manager.character_stats = character_stats
+		equipment_manager.modular_visuals = modular_visuals
+		add_child(equipment_manager)
+	else:
+		equipment_manager.inventory_manager = inventory_manager
+		equipment_manager.character_stats = character_stats
+		equipment_manager.modular_visuals = modular_visuals
+
+	if character_stats:
+		if not character_stats.stats_changed.is_connected(_on_character_stats_changed):
+			character_stats.stats_changed.connect(_on_character_stats_changed)
+		character_stats.sync_with_player(self)
+
+	if health_component and not health_component.health_changed.is_connected(_on_health_component_changed):
+		health_component.health_changed.connect(_on_health_component_changed)
+
+
+func _on_character_stats_changed() -> void:
+	if character_stats:
+		character_stats.sync_with_player(self)
+
+
+func _on_health_component_changed(current: int, _max_val: int) -> void:
+	if character_stats and character_stats.current_health != current:
+		character_stats.current_health = current
 
 
 func get_movement_input() -> Vector2:

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EquipmentData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/equipment_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/items/cloth_armor.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+icon = ExtResource("2_icon")
+item_id = &"cloth_armor"
+item_name = "Pakaian Kain"
+description = "Baju kain rajut ringan. Memberikan sedikit perlindungan dari goresan."
+item_type = 3
+rarity = 0
+max_stack = 1
+sell_value = 20
+is_stackable = false
+equipment_slot = 2
+attack_bonus = 0
+defense_bonus = 2
+health_bonus = 10
+movement_speed_bonus = 0.0
+visual_layer = &"Armor"

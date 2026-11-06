@@ -209,8 +209,11 @@ func _on_died() -> void:
 	var pos := global_position
 	defeated.emit(enemy_id, pos)
 	var event_bus := get_node_or_null("/root/EventBus")
-	if event_bus and event_bus.has_signal("enemy_defeated"):
-		event_bus.enemy_defeated.emit(enemy_id)
+	if event_bus:
+		if event_bus.has_signal("enemy_defeated_at"):
+			event_bus.enemy_defeated_at.emit(enemy_id, pos)
+		if event_bus.has_signal("enemy_defeated"):
+			event_bus.enemy_defeated.emit(enemy_id)
 
 	# Visual death feedback
 	if is_inside_tree():

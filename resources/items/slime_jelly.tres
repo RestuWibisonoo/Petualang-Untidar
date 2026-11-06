@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/items/slime_jelly.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+icon = ExtResource("2_icon")
+item_id = &"slime_jelly"
+item_name = "Lendir Slime"
+description = "Bahan material kenyal sisa dari Dummy Slime. Berguna untuk sintesis dan alkimia."
+item_type = 1
+rarity = 0
+max_stack = 99
+sell_value = 5
+is_stackable = true

@@ -21,6 +21,9 @@
 [ext_resource type="Script" path="res://scripts/components/interaction_component.gd" id="19_lgqa7"]
 [ext_resource type="Script" path="res://scripts/player/states/player_attack_state.gd" id="20_attack"]
 [ext_resource type="Script" path="res://scripts/player/states/player_hurt_state.gd" id="21_hurt"]
+[ext_resource type="Script" path="res://scripts/systems/inventory_manager.gd" id="22_inv"]
+[ext_resource type="Script" path="res://scripts/systems/character_stats.gd" id="23_stats"]
+[ext_resource type="Script" path="res://scripts/systems/equipment_manager.gd" id="24_equip"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_kxw46"]
 radius = 6.0
@@ -1623,3 +1626,15 @@ position_smoothing_speed = 8.0
 collision_layer = 0
 collision_mask = 128
 script = ExtResource("19_lgqa7")
+
+[node name="InventoryManager" type="Node" parent="."]
+script = ExtResource("22_inv")
+
+[node name="CharacterStats" type="Node" parent="."]
+script = ExtResource("23_stats")
+
+[node name="EquipmentManager" type="Node" parent="." node_paths=PackedStringArray("inventory_manager", "character_stats", "modular_visuals")]
+script = ExtResource("24_equip")
+inventory_manager = NodePath("../InventoryManager")
+character_stats = NodePath("../CharacterStats")
+modular_visuals = NodePath("../ModularVisuals")

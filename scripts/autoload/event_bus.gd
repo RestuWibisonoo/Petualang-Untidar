@@ -8,6 +8,8 @@ extends Node
 signal player_health_changed(current: int, max_val: int)
 signal player_stamina_changed(current: float, max_val: float)
 signal player_died
+signal player_leveled_up(new_level: int, stat_points: int)
+signal exp_gained(amount: int, current_exp: int, required_exp: int)
 
 # --- Combat & Feedback Signals ---
 signal damage_dealt(target: Node2D, amount: int, is_critical: bool)
@@ -22,6 +24,7 @@ signal equipment_changed(slot: StringName, item_data: Resource)
 signal quest_progress_updated(quest_id: StringName, current_step: int, total_steps: int)
 signal quest_completed(quest_id: StringName)
 signal enemy_defeated(enemy_id: StringName)
+signal enemy_defeated_at(enemy_id: StringName, position: Vector2)
 
 # --- State & Flow Signals ---
 signal game_state_changed(previous_state: int, new_state: int)

@@ -126,6 +126,9 @@ Player (CharacterBody2D) [Script: player.gd]
 │   └── CollisionShape2D
 ├── InteractionComponent (Area2D - Collision: Layer 0, Mask: Layer 8: 128) [Script: interaction_component.gd]
 │   └── CollisionShape2D
+├── CharacterStats (Node) [Script: character_stats.gd]
+├── InventoryManager (Node) [Script: inventory_manager.gd]
+├── EquipmentManager (Node) [Script: equipment_manager.gd]
 └── Camera2D (Position Smoothing, Pixel Snap, Viewport Limits)
 ```
 
@@ -149,8 +152,9 @@ WorldBase (Node2D) [Script: world_base.gd]
 ├── SpawnPoints (Node2D - Koleksi Marker2D untuk posisi masuk/keluar)
 │   ├── default (Marker2D)
 │   └── from_building / from_outdoor (Marker2D)
-├── TouchControls (CanvasLayer layer 10 - VirtualJoystick & Action/Interact Buttons)
-└── HUD (CanvasLayer layer 5 - State, Speed, Facing, Pause, PromptLabel)
+├── LootSpawner (Node - Manajemen drop loot saat enemy defeated) [Script: loot_spawner.gd]
+├── TouchControls (CanvasLayer layer 10 - VirtualJoystick & Action/Interact/Inventory Buttons)
+└── HUD (CanvasLayer layer 5 - State, Speed, Facing, Pause, PromptLabel, InventoryUI)
 ```
 
 ### 3.3 Struktur Entitas Musuh (`base_enemy.tscn`)
@@ -196,10 +200,13 @@ Hanya terdapat **5 Autoload inti** yang diizinkan untuk mencegah ketergantungan 
 1. **`EventBus.gd`**
    * `player_health_changed(current: int, max_val: int)`
    * `player_stamina_changed(current: float, max_val: float)`
+   * `player_leveled_up(new_level: int, stat_points: int)`
+   * `exp_gained(amount: int, current_exp: int, required_exp: int)`
    * `inventory_updated()`
    * `item_equipped(slot: StringName, item: EquipmentData)`
    * `quest_status_changed(quest_id: StringName, status: int)`
    * `enemy_defeated(enemy_id: StringName)`
+   * `enemy_defeated_at(enemy_id: StringName, world_pos: Vector2, exp_reward: int, loot_table: Resource)`
    * `show_floating_text(text: String, world_position: Vector2, color: Color)`
 
 2. **`GameManager.gd`**
@@ -269,22 +276,70 @@ Seluruh data permainan didefinisikan menggunakan Godot Custom Resource berorient
 ### 6.1 Hirarki Resource
 ```
 Resource
- ├── CharacterStats (Darah, stamina, attack, defense, move speed, modifiers)
- ├── ItemData (ID, nama, deskripsi, icon, item_type, max_stack, harga)
- │    └── EquipmentData (Slot, stat_bonuses, visual_texture_atlas)
+ ├── ItemData (ID, nama, deskripsi, icon, item_type, rarity, max_stack, sell_value) [scripts/resources/item_data.gd]
+ │    └── EquipmentData (equipment_slot, attack_bonus, defense_bonus, health_bonus, movement_speed_bonus, visual_layer) [scripts/resources/equipment_data.gd]
+ ├── LootDropEntry (item_data, min_quantity, max_quantity, drop_chance, weight) [scripts/resources/loot_drop_entry.gd]
+ ├── LootTable (entries: Array[LootDropEntry], use_weighted_pool) [scripts/resources/loot_table.gd]
  ├── EnemyData (ID, nama, base_stats, ai_behavior, drop_table, exp_reward)
  └── QuestData (ID, judul, objectives, rewards, prerequisite_quests)
 ```
 
 ### 6.2 Enums Standar
-* **`ItemType`**: `CONSUMABLE`, `EQUIPMENT`, `MATERIAL`, `QUEST`.
-* **`EquipmentSlot`**: `WEAPON`, `ARMOR_BODY`, `PANTS`, `HAIR_HELM`, `ACCESSORY`.
+* **`ItemType`**:
+  * `ItemType.CONSUMABLE` (Item sekali pakai pemulih HP/Stamina)
+  * `ItemType.EQUIPMENT` (Senjata dan zirah pelindung)
+  * `ItemType.MATERIAL` (Bahan mentah monster/crafting)
+  * `ItemType.QUEST` (Item cerita/tugas kampus)
+* **`EquipmentSlot`**:
+  * `EquipmentSlot.WEAPON` ("weapon")
+  * `EquipmentSlot.BODY` ("body")
+  * `EquipmentSlot.PANTS` ("pants")
+  * `EquipmentSlot.HEAD` ("head")
+  * `EquipmentSlot.ACCESSORY` ("accessory")
 * **`Rarity`**:
   * `COMMON` (Warna `#FFFFFF` / Putih)
   * `UNCOMMON` (Warna `#4CAF50` / Hijau)
   * `RARE` (Warna `#2196F3` / Biru)
   * `EPIC` (Warna `#9C27B0` / Ungu)
   * `LEGENDARY` (Warna `#FF9800` / Oranye Emas)
+
+### 6.3 Inventory Architecture (`InventorySlot` & `InventoryManager`)
+* **Slot Model (`InventorySlot`):** Menggunakan `RefCounted` ringan untuk menampung referensi `ItemData` dan integer kuantitas `quantity`. Menyediakan helper `is_empty()`, `can_add()`, `add_quantity()`, dan `remove_quantity()`.
+* **Manager (`InventoryManager`):** Komponen dengan kapasitas tetap (20 slot).
+  * **Stack Merging & Overflow:** Menambah item stackable mencari slot eksisting terlebih dahulu hingga `max_stack`; sisa overflow dialokasikan ke slot kosong baru. Item non-stackable diisolasi 1 per slot.
+  * **Partial Insertion:** Menghitung total kapasitas tersisa terlebih dahulu; item dimasukkan sebanyak mungkin dan mengembalikan sisa yang gagal masuk tanpa merusak state internal.
+  * **Atomic Move & Swap:** Operasi pemindahan antar slot bersifat atomik (`swap_slots(from, to)`). Penggabungan stack sejenis terjadi otomatis jika tipe item identik dan kapasitas slot target mencukupi.
+  * **Snapshot Safety:** Method `get_slots_snapshot()` mengembalikan duplikat deep-copy dari array slot sehingga UI atau sistem lain tidak dapat memutasi state inventory secara tidak sengaja.
+  * **Event Notification:** Memancarkan sinyal `inventory_changed`, `item_added`, dan `item_removed`.
+
+### 6.4 Equipment Architecture (`EquipmentManager`)
+* **Slot Mapping:** Mengelola 5 slot terdedikasi (`weapon`, `body`, `pants`, `head`, `accessory`).
+* **Atomic Equip / Unequip / Swap:**
+  * `equip_item_from_inventory(slot_index)`: Memasang equipment, dan jika slot sudah terisi, equipment lama ditukar langsung ke slot inventaris asal secara in-place.
+  * `unequip_item(equipment_slot)`: Melepas equipment dan mengembalikannya ke inventaris. Ditolak aman (return `false`) jika inventaris 100% penuh tanpa menghilangkan item.
+* **Integrasi Modular Visuals:** Memasang atau melepas perlengkapan langsung menyinkronkan layer visual (`ModularVisuals.set_layer_texture()`) dan memicu `stats.recalculate()`.
+
+### 6.5 Progression & Character Stats (`CharacterStats`)
+* **Kalkulasi Total Stat:**
+  * $\text{Attack} = \text{base\_attack} + \text{equipment\_attack} + \text{allocated\_attack}$
+  * $\text{Defense} = \text{base\_defense} + \text{equipment\_defense} + \text{allocated\_defense}$
+  * $\text{Max HP} = \text{base\_max\_health} + \text{equipment\_health} + \text{allocated\_health}$
+  * $\text{Speed} = \text{base\_move\_speed} + \text{equipment\_speed}$
+* **Max HP Clamping:** Penurunan Max HP (saat unequip) meng-clamp `current_health` agar tidak melebihi batas baru, namun peningkatan Max HP tidak menambah darah instan (*anti auto-heal exploit*).
+* **EXP & Level Up Formula:**
+  * Formula EXP kebutuhan: $\text{Required EXP} = \text{int}(100 \times \text{level}^{1.2})$
+  * Mendukung akumulasi EXP multi-level dalam satu event pertarungan (*overflow handling*).
+  * Menghadiahkan 3 Stat Point per level baru untuk dialokasikan bebas oleh pemain ke HP (+10), ATK (+1), atau DEF (+1).
+
+### 6.6 Loot Drop & Ground Item Architecture (`LootTable`, `LootSpawner`, `WorldItem`)
+* **LootTable & LootDropEntry:** Mendukung evaluasi peluang mandiri (*independent drop chance* $0.0 - 1.0$) serta evaluasi kolam berbobot (*weighted random drop pool*). Dilengkapi injeksi RNG untuk pengujian runtime yang deterministik.
+* **LootSpawner:** Berada di level scene mendengarkan `EventBus.enemy_defeated_at`. Secara otomatis mendistribusikan EXP ke `CharacterStats` pemain dan mengeksekusi instansiasi drop item di koordinat musuh secara deferred.
+* **WorldItem (`scenes/objects/world_item.tscn`):**
+  * Entitas fisik dunia turunan `Area2D` di Layer 8 (Interactables).
+  * Animasi floating/bobbing sinusoidal ringan pada sprite 16x16.
+  * Mendukung pengambilan otomatis saat bersentuhan (`_on_body_entered`) serta interaksi manual.
+  * Dilengkapi flag `_is_collected` anti re-entrancy ganda (single-pickup lock).
+  * **Ground Rejection:** Jika inventaris pemain penuh, item tetap berada di tanah dan tidak hilang/musnah.
 
 ---
 

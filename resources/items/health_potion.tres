@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/items/health_potion.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+icon = ExtResource("2_icon")
+item_id = &"health_potion"
+item_name = "Ramuan Pemulih"
+description = "Ramuan merah herbal berkhasiat menyembuhkan 30 poin kesehatan saat dikonsumsi."
+item_type = 0
+rarity = 0
+max_stack = 20
+sell_value = 10
+is_stackable = true

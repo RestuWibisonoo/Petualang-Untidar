@@ -109,7 +109,7 @@
 ## Phase 4: Combat System
 
 * **Tujuan:** Membangun sistem pertarungan top-down real-time: serangan jarak dekat/jauh, kalkulasi damage/defense, knockback, efek flash darah, dan AI dasar musuh.
-* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 92/92 assertions dan runtime physics suite 33/33 assertions, 100% PASS)
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 97/97 assertions dan runtime physics suite 47/47 assertions, 100% PASS)
 * **Dependencies:** Phase 2 (Character FSM), Phase 3 (World).
 * **Daftar Pekerjaan Selesai:**
   1. State `PlayerAttackState` dengan sistem 2-stage combo, timing window (Startup 0.08s, Active 0.12s, Recovery 0.10s), input buffering, dan orientasi hitbox 8 arah.
@@ -126,6 +126,7 @@
   4. Sistem reaksi terkena serang: Red Flash tween, knockback physics integratif pada `VelocityComponent` & `move_and_slide()` (zero wall clipping), dan floating combat text via `EventBus.show_floating_text`.
   5. Sinyal kematian single-emission (`EventBus.enemy_defeated`), fade feedback, dan pembersihan aman entitas musuh (`queue_free`).
   6. Pembuatan test arena `scenes/world/combat_arena.tscn` & `scripts/world/combat_arena.gd` terhubung door transition dua arah dengan `outdoor_test.tscn`.
+  7. Post-Implementation Audit Fix: Isolasi vektor knockback pada `VelocityComponent` (bebas pencemaran velocity normal pasca collision), integrasi delta fisika di seluruh state, dan penambahan `PlayerHurtState`.
 * **Verified Deliverables & Acceptance Criteria:**
   - Pemain dapat menyerang ke 8 arah hadap karakter dengan combo 2 tahap (Stage 1: 15 dmg, 120 kb; Stage 2: 25 dmg, 200 kb).
   - Musuh mendeteksi dan mengejar pemain saat masuk radius aggro (120 px) serta melancarkan serangan telegraphed saat dalam jangkauan (24 px).
@@ -138,20 +139,22 @@
 ## Phase 5: Loot & Progression
 
 * **Tujuan:** Mengembangkan sistem inventaris, equipment, drop loot berbobot persentase, dan peningkatan status karakter berbasis resource.
-* **Status Pekerjaan:** **PLANNED**
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 122/122 assertions dan runtime physics suite 29/29 assertions, 100% PASS)
 * **Dependencies:** Phase 4 (Combat System), Phase 1 (Data Resources).
-* **Daftar Pekerjaan:**
-  1. Implementasi Resource `ItemData`, `EquipmentData`, dan `CharacterStats`.
-  2. Sistem `InventoryManager` (manajemen grid tas, stacking item, batas kapasitas).
-  3. Sistem equip item yang secara dinamis memperbarui visual layer di `ModularVisuals` dan mengubah atribut di `CharacterStats`.
-  4. Komponen `LootSpawner` yang memunculkan item di tanah dengan efek bouncing sederhana saat musuh dikalahkan.
-  5. Sistem EXP, Level Up, dan alokasi poin status.
-* **Expected Deliverables:**
-  - Item dapat dipungut dari tanah dan masuk ke inventaris.
-  - Mengganti senjata atau zirah langsung mengubah tampilan karakter dan daya serang/bertahan.
-* **Acceptance Criteria:**
-  - Tidak ada duplikasi item saat berpindah slot inventaris.
-  - Atribut karakter bertambah dan berkurang secara akurat saat barang dipasang atau dilepas.
+* **Daftar Pekerjaan Selesai:**
+  1. Implementasi Resource `ItemData` dan turunan `EquipmentData` (`Weapon`, `Head`, `Body`, `Accessory`) dengan rarity, stacking, dan icon pixel-art terdedikasi.
+  2. Sistem `InventoryManager` terpusat: kapasitas 20 slot, stack merging otomatis, penanganan kapasitas parsial, pemindahan & pertukaran slot aman tanpa kehilangan/duplikasi item.
+  3. Sistem `EquipmentManager` dengan pertukaran atomic (in-place inventory swap), penolakan aman saat inventaris penuh, sinkronisasi atribut karakter, dan integrasi visual `ModularVisuals`.
+  4. Komponen `CharacterStats`: perhitungan dinamis Base Stats + Equipment Bonuses + Allocated Stat Points, pembatasan Max HP, integrasi scaling serangan langsung ke `PlayerAttackState`, dan pertahanan ke `HurtboxComponent`.
+  5. Sistem EXP dan Leveling: penambahan EXP saat musuh dikalahkan, level up otomatis (multi-level overflow), formula ambang level adaptif, dan alokasi poin status (+HP, +ATK, +DEF).
+  6. Sistem `LootTable` dan `LootDropEntry`: evaluasi probabilitas drop independen dan weighted raffle selection dengan RNG terinjeksi untuk uji deterministik.
+  7. Komponen `LootSpawner` dan scene `WorldItem`: animasi floating bobbing, pickup fisik otomatis & interaksi tombol E, proteksi pengambilan ganda (single-pickup lock), dan penolakan aman saat inventaris penuh.
+  8. Antarmuka Pengguna `InventoryUI`: panel grid 20 slot, detail barang terpilih, tombol aksi pasang/buang, tampilan slot perlengkapan, EXP bar, display status tempur, tombol alokasi stat point, kompatibel 640x360, serta integrasi tombol sentuh mobile `%InventoryButton`.
+* **Verified Deliverables & Acceptance Criteria:**
+  - Item dapat dijatuhkan dari musuh yang mati dan dipungut masuk ke inventaris secara mulus.
+  - Memasang senjata atau zirah secara langsung dan akurat meningkatkan nilai serang/tahan di hitboxes dan kalkulasi damage pertempuran nyata.
+  - Tidak ada duplikasi atau kehilangan item pada seluruh skenario pemindahan, pertukaran, maupun operasi gagal karena inventaris penuh.
+  - Seluruh sistem lulus uji regresi 582/582 assertions (100% PASS).
 
 ---
 

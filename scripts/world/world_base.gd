@@ -50,6 +50,19 @@ func _ready() -> void:
 			info_dialog = panel_scene.instantiate() as InfoDialogPanel
 			$HUD.add_child(info_dialog)
 
+	# Ensure InventoryUI exists in HUD
+	if not get_node_or_null("HUD/InventoryUI") and has_node("HUD"):
+		var inv_scene: PackedScene = load("res://scenes/ui/inventory_ui.tscn")
+		if inv_scene:
+			var inv_ui := inv_scene.instantiate()
+			$HUD.add_child(inv_ui)
+
+	# Ensure LootSpawner exists in level
+	if not get_node_or_null("LootSpawner"):
+		var spawner := LootSpawner.new()
+		spawner.name = "LootSpawner"
+		add_child(spawner)
+
 	var event_bus := get_node_or_null("/root/EventBus")
 	if event_bus:
 		if event_bus.has_signal("show_floating_text"):

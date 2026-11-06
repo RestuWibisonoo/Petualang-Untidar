@@ -13,6 +13,7 @@ extends CanvasLayer
 @onready var dodge_button: Button = %DodgeButton
 @onready var interact_button: Button = %InteractButton
 @onready var attack_button: Button = get_node_or_null("%AttackButton") as Button
+@onready var inventory_button: Button = get_node_or_null("%InventoryButton") as Button
 
 
 func _ready() -> void:
@@ -33,6 +34,9 @@ func _ready() -> void:
 	if attack_button:
 		attack_button.button_down.connect(_on_attack_button_down)
 		attack_button.button_up.connect(_on_attack_button_up)
+
+	if inventory_button:
+		inventory_button.pressed.connect(_on_inventory_button_pressed)
 
 
 func _check_touch_visibility() -> void:
@@ -84,3 +88,10 @@ func _on_attack_button_down() -> void:
 
 func _on_attack_button_up() -> void:
 	Input.action_release("attack")
+
+
+func _on_inventory_button_pressed() -> void:
+	var ev := InputEventAction.new()
+	ev.action = &"inventory"
+	ev.pressed = true
+	Input.parse_input_event(ev)

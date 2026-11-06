@@ -22,6 +22,16 @@
 | **ADR-010** | Konvensi Struktur Direktori: Direct Root Modular | **ADOPTED** | 2026-11-06 |
 | **ADR-011** | Standar Kanvas Pixel Art Karakter 32x32 & Layout Spritesheet Seragam | **ADOPTED** | 2026-11-06 |
 | **ADR-012** | Virtual Touch Joystick & Touch Controls Input Layering | **ADOPTED** | 2026-11-06 |
+| **ADR-013** | TileMapLayer Pipeline & 2D Y-Sort Depth Architecture | **ADOPTED** | 2026-11-06 |
+| **ADR-014** | Component-Based Interaction System (Layer 8 Matrix) | **ADOPTED** | 2026-11-06 |
+| **ADR-015** | Door Transition & Spawn Point Routing via SceneManager | **ADOPTED** | 2026-11-06 |
+| **ADR-016** | 8-Layer Combat Collision Matrix & Faction Filtering | **ADOPTED** | 2026-11-06 |
+| **ADR-017** | Player 2-Stage Attack Combo, Input Buffering & 8-Directional Orientation | **ADOPTED** | 2026-11-06 |
+| **ADR-018** | Hurtbox Single-Authority Invulnerability (I-Frames) & Physics Knockback Integration | **ADOPTED** | 2026-11-06 |
+| **ADR-019** | Custom Resources untuk Items, Equipment & Loot Tables | **ADOPTED** | 2026-11-07 |
+| **ADR-020** | Inventory Stacking, Atomic Swapping & Capacity Mechanics | **ADOPTED** | 2026-11-07 |
+| **ADR-021** | Character Stats Composition & Dynamic Combat Recalculation | **ADOPTED** | 2026-11-07 |
+| **ADR-022** | Event-Driven Loot Spawner & Single-Pickup Ground Item Architecture | **ADOPTED** | 2026-11-07 |
 
 ---
 
@@ -276,5 +286,67 @@
   1. Mengintegrasikan knockback ke dalam `move_and_slide()` memastikan algoritma deteksi rintangan bawaan engine menghentikan dorongan tepat di permukaan dinding (100% bebas bug tembus tembok).
   2. Menempatkan logika I-frames pada hurtbox mencegah exploit pergantian senjata atau pemanggilan serangan ganda yang menimpa kalkulasi kekebalan target.
 * **Konsekuensi:** Durasi kekebalan (`invulnerability_duration`) dan gesekan peluruhan knockback (`knockback_friction`) harus dituning per tipe entitas (default 0.2s dan 800.0 px/s²).
+
+---
+
+### ADR-019: Custom Resources untuk Items, Equipment & Loot Tables
+
+* **Konteks:** Sistem loot, inventaris, dan perlengkapan memerlukan struktur data yang modular, dapat diedit via Godot Inspector, type-safe, dan dapat diserialisasikan ke format text (`.tres`).
+* **Keputusan:** Mengimplementasikan hierarki Godot Custom Resource:
+  1. `ItemData` (`scripts/resources/item_data.gd`): Properti dasar item (`item_id`, `item_name`, `description`, `icon`, `item_type`, `rarity`, `max_stack`, `sell_value`, `is_stackable`).
+  2. `EquipmentData` (`scripts/resources/equipment_data.gd`): Turunan `ItemData` dengan atribut perlengkapan (`equipment_slot`, `attack_bonus`, `defense_bonus`, `health_bonus`, `movement_speed_bonus`, `visual_layer`).
+  3. `LootDropEntry` (`scripts/resources/loot_drop_entry.gd`) & `LootTable` (`scripts/resources/loot_table.gd`): Mendukung probabilitas mandiri (*independent chance*) dan kolam drop berbobot (*weighted random pool*) dengan injeksi RNG untuk pengujian deterministik.
+* **Alasan Pemilihan:**
+  1. Custom Resource (`.tres`) memisahkan data gameplay murni dari hierarki scene, menghemat memori runtime dan memungkinkan hot-reloading di editor.
+  2. Pewarisan `EquipmentData extends ItemData` mengizinkan slot inventaris menerima item jenis apa pun secara transparan tanpa casting runtime yang rentan error.
+  3. Format teks `.tres` mempermudah tracking perubahan file di Git (human-readable diffs).
+* **Konsekuensi:** Semua item, senjata, zirah, dan tabel loot dibuat dan disimpan sebagai `.tres` di direktori `resources/`.
+
+---
+
+### ADR-020: Inventory Stacking, Atomic Swapping & Capacity Mechanics
+
+* **Konteks:** Manajemen inventaris (kapasitas 20 slot) harus menjamin integritas data 100% bebas item loss atau item duplication saat pemindahan, penukaran, penambahan parsial, maupun penggabungan stack.
+* **Keputusan:** Menggunakan `InventorySlot` berbasis `RefCounted` dan `InventoryManager` dengan arsitektur transaksi atomik:
+  1. Operasi penambahan (`add_item`) mengutamakan pengisian stack sejenis hingga `max_stack` sebelum mengonsumsi slot kosong baru.
+  2. Mendukung *partial insertion*: item disisipkan sebanyak sisa ruang yang tersedia, dan kuantitas overflow dikembalikan tanpa membuang item.
+  3. Penukaran dan pemindahan slot (`swap_slots`, `move_slot`) dijalankan secara atomik dalam 1 frame tanpa risiko item hilang di tengah proses.
+  4. Snapshot data diekspor sebagai deep-copy (`get_slots_snapshot()`) untuk melindungi internal inventory dari manipulasi eksternal UI.
+* **Alasan Pemilihan:**
+  1. Menghilangkan celah duplikasi item (*item duplication exploit*) yang biasa terjadi pada manipulasi inventaris asinkron.
+  2. Menjamin batas kapasitas tetap (20 slot) dipatuhi secara ketat di semua skenario transaksi.
+* **Konsekuensi:** Seluruh antarmuka UI dan gameplay wajib berinteraksi dengan inventaris melalui API publik `InventoryManager`.
+
+---
+
+### ADR-021: Character Stats Composition & Dynamic Combat Recalculation
+
+* **Konteks:** Statistik tempur karakter (HP, Attack, Defense, Movement Speed) dipengaruhi oleh base level stats, bonus equipment yang dikenakan, dan alokasi stat points pemain saat naik level.
+* **Keputusan:** Menggunakan `CharacterStats` terpusat yang menghitung total stat secara dinamis:
+  - $\text{Stat Total} = \text{Base} + \text{Equipment Bonus} + \text{Allocated Bonus}$
+  - Mengintegrasikan stat total ke `PlayerAttackState` (skalasi damage combo), `HurtboxComponent` (reduksi damage via defense), dan `VelocityComponent` (skalasi move speed).
+  - Mekanisme anti-exploit Max HP clamping: pelepasan armor mengurangi current HP jika melebihi batas baru, namun pemakaian armor tidak langsung menyembuhkan HP pemain (*no auto-heal exploit*).
+  - Formula kurva level progresif: $\text{Required EXP} = \text{int}(100 \times \text{level}^{1.2})$ dengan dukungan multi-level overflow dan alokasi 3 stat points per level.
+* **Alasan Pemilihan:**
+  1. Menghindari duplikasi kalkulasi stat di berbagai skrip combat.
+  2. Mencegah exploit "equip armor to heal" yang umum pada game RPG.
+  3. Menjamin progresivitas level yang seimbang dan fleksibilitas build karakter.
+* **Konsekuensi:** Seluruh pembacaan status tempur pemain diarahkan ke `CharacterStats`.
+
+---
+
+### ADR-022: Event-Driven Loot Spawner & Single-Pickup Ground Item Architecture
+
+* **Konteks:** Ketika musuh dikalahkan, sistem harus mendistribusikan EXP dan memunculkan item drop di lantai tanpa menyebabkan race condition atau query collision flush error pada Godot physics engine.
+* **Keputusan:** Mengimplementasikan arsitektur decoupled:
+  1. Musuh memancarkan `EventBus.enemy_defeated_at(enemy_id, position, exp_reward, loot_table)`.
+  2. `LootSpawner` di level menangani sinyal, memberikan EXP secara otomatis ke `CharacterStats`, dan mengevaluasi `LootTable`.
+  3. Drop item diinstansiasi sebagai `WorldItem` (`Area2D` di Layer 8) secara `call_deferred("add_child", item)` untuk menghindari error `Can't change this state while flushing queries`.
+  4. `WorldItem` memiliki single-pickup lock (`_is_collected`) dan ground rejection: jika inventaris pemain penuh, item tetap aman di lantai dan tidak hilang.
+* **Alasan Pemilihan:**
+  1. Memisahkan siklus hidup musuh dari proses spawn loot; musuh dapat langsung di-`queue_free()` tanpa menunggu animasi drop item.
+  2. Ground rejection melindungi barang pemain dari hilang sia-sia akibat inventaris penuh.
+  3. Single-pickup lock mencegah pengambilan ganda saat area overlap terpicu beruntun.
+* **Konsekuensi:** Semua scene musuh harus memiliki properti `exp_reward` dan referensi `loot_table`.
 
 

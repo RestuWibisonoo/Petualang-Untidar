@@ -63,7 +63,9 @@ func enter(_msg: Dictionary = {}) -> void:
 	# 2. Position and configure player's HitboxComponent
 	var hitbox := player.hitbox_component
 	if hitbox:
-		hitbox.damage = stage_2_damage if combo_stage == 2 else stage_1_damage
+		var bonus_atk: int = (player.character_stats.attack - 15) if (player and player.character_stats) else 0
+		var base_dmg := stage_2_damage if combo_stage == 2 else stage_1_damage
+		hitbox.damage = base_dmg + bonus_atk
 		hitbox.knockback_force = stage_2_knockback if combo_stage == 2 else stage_1_knockback
 		hitbox.faction = HitboxComponent.Faction.PLAYER
 		hitbox.position = _attack_direction * attack_reach

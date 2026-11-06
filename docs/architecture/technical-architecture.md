@@ -296,3 +296,52 @@ J / Space / Enter ────────┘    Input     └──── Canva
 | **Kinerja Baterai Android** | Batasi target framerate maksimum ke 60 FPS (`Engine.max_fps = 60`) untuk mencegah panas berlebih (*thermal throttling*). |
 | **Pixel Art Aspect Ratio** | Resolusi viewport dasar integer `640x360` dengan black bars (*pillarbox/letterbox*) jika rasio layar ponsel melebihi 16:9. |
 
+---
+
+## 10. Standard Directory Hierarchy
+
+Proyek mengadopsi struktur modular tingkat atas langsung tanpa wrapper `src/` untuk menyederhanakan path referensi `res://`:
+
+```text
+petualang-untidar/
+├── assets/                  # Seluruh berkas biner/aset game
+│   ├── audio/ (bgm, sfx)
+│   ├── characters/
+│   ├── environments/
+│   ├── enemies/
+│   ├── items/
+│   ├── weapons/
+│   ├── tilesets/
+│   ├── effects/
+│   └── ui/
+├── scenes/                  # Seluruh berkas scene Godot (.tscn)
+│   ├── main/
+│   ├── player/
+│   ├── world/
+│   ├── enemies/
+│   ├── dungeon/
+│   ├── objects/
+│   └── ui/
+├── scripts/                 # Seluruh skrip GDScript (.gd)
+│   ├── autoload/            # Core singletons (EventBus, GameManager, dll)
+│   ├── core/                # Utility & fundamental types
+│   ├── components/          # Reusable components (Health, Velocity, dll)
+│   ├── entities/            # Logika entitas
+│   ├── states/              # State & StateMachine
+│   ├── systems/             # Logika gameplay global
+│   ├── player/              # Skrip spesifik pemain
+│   ├── world/               # Skrip level & tilemaps
+│   ├── combat/              # Skrip kalkulasi pertarungan
+│   └── ui/                  # Skrip antarmuka
+├── resources/               # Godot Custom Resources (.tres)
+│   ├── characters/
+│   ├── items/
+│   ├── equipment/
+│   ├── enemies/
+│   ├── skills/
+│   └── quests/
+├── tests/                   # Automated headless test suites
+├── docs/                    # Dokumentasi arsitektur, laporan, dan keputusan
+└── project.godot            # Konfigurasi engine terstandarisasi
+```
+

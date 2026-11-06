@@ -16,9 +16,10 @@
 | **ADR-004** | Target Platform: Web (HTML5) & Android (Mobile) | **ADOPTED** | 2026-11-06 |
 | **ADR-005** | Sistem Pergerakan: 8-Directional Discretized Movement | **ADOPTED** | 2026-11-06 |
 | **ADR-006** | Kustomisasi Karakter: Modular Synchronized Layering Rig | **ADOPTED** | 2026-11-06 |
-| **ADR-007** | Standar Pixel Art: Viewport Scaling & Integer Snapping | **PROPOSED** | 2026-11-06 |
+| **ADR-007** | Standar Pixel Art: Viewport Scaling & Integer Snapping | **ADOPTED** | 2026-11-06 |
 | **ADR-008** | Arsitektur Data: Custom Resources (`.tres`) Berorientasi Tipe | **ADOPTED** | 2026-11-06 |
 | **ADR-009** | Pola Jaringan: Single-Player First dengan Decoupled Architecture | **ADOPTED** | 2026-11-06 |
+| **ADR-010** | Konvensi Struktur Direktori: Direct Root Modular | **ADOPTED** | 2026-11-06 |
 
 ---
 
@@ -118,7 +119,7 @@
 * **Alasan Pemilihan:**
   - `640x360` diskalakan tepat 2x ke 720p (HD), 3x ke 1080p (FHD), 4x ke 1440p (QHD), dan 6x ke 4K (UHD) secara *integer scale* sempurna tanpa distorsi.
   - Mencegah garis batas pixel berkedip (*shimmering*) saat kamera bergeser secara halus.
-* **Status:** **PROPOSED (Menunggu Konfirmasi User mengenai pilihan 640x360 vs 480x270).**
+* **Status:** **ADOPTED (Diimplementasikan pada Phase 1).**
 
 ---
 
@@ -145,4 +146,18 @@
   1. Membangun multiplayer sejak awal secara prematur akan melipatgandakan kompleksitas kode, waktu pengerjaan, dan biaya server yang belum tentu dibutuhkan saat peluncuran awal.
   2. Dengan memisahkan input controller dari entity, di masa depan input remote (RPC / Network) dapat dengan mudah dipasangkan ke entitas tanpa merombak sistem pergerakan dan pertarungan.
 * **Konsekuensi:** Tidak ada kode sinkronisasi jaringan yang ditulis pada fase-fase awal.
+
+---
+
+### ADR-010: Konvensi Struktur Direktori — Direct Root Modular
+
+* **Konteks:** Menentukan struktur root direktori apakah menggunakan subfolder pembungkus `src/` atau struktur modular root langsung (`scenes/`, `scripts/`, `assets/`, `resources/`, `docs/`).
+* **Keputusan:** Menggunakan **Direct Root Modular** (`scenes/`, `scripts/`, `assets/`, `resources/`, `docs/`).
+* **Alasan Pemilihan:**
+  1. Format standar engine Godot yang paling natural; path resource menjadi lebih ringkas (misal: `res://scenes/main/main.tscn` dibanding `res://src/scenes/main/main.tscn`).
+  2. Memisahkan berkas skrip murni (`scripts/`) dari scene tampilan (`scenes/`) dan data (`resources/`) secara tegas tanpa kedalaman folder yang berlebihan.
+  3. Mempermudah navigasi di FileSystem dock Godot Editor.
+* **Alternatif yang Dipertimbangkan:**
+  - *Nested `src/` structure:* Baik untuk proyek C++/Web tradisional, namun menambah kedalaman path yang tidak perlu pada ekosistem resource Godot.
+* **Konsekuensi:** Seluruh import path dan instansiasi scene mengacu pada struktur root tanpa `src/`.
 

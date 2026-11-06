@@ -17,6 +17,8 @@ Seluruh dokumentasi teknis, audit, dan perencanaan proyek tersedia di direktori 
 - **[Technical Architecture](docs/architecture/technical-architecture.md)**: Arsitektur sistem game, hierarki scene, Autoload, data resource, dan modular rig.
 - **[Development Roadmap](docs/development/roadmap.md)**: Rencana 8 fase pengembangan dari Phase 1 hingga rilis.
 - **[Technical Decision Log (ADR)](docs/decisions/technical-decisions.md)**: Catatan keputusan teknis dan alasannya.
+- **[Phase 1 Implementation Report](docs/reports/2026-11-06-phase-1-project-foundation.md)**: Laporan implementasi fondasi engine, input, autoload, dan core components.
 
 ## Lisensi & Hak Cipta
 Hak Cipta (c) 2026 Tim Pengembang Petualang Untidar.
+

@@ -40,8 +40,7 @@ func physics_update(delta: float) -> void:
 	if player.velocity_component:
 		player.velocity_component.max_speed = player.walk_speed
 		player.velocity_component.accelerate_in_direction(player.current_input_direction, delta)
-		player.velocity_component.apply_to_body(player)
+		player.velocity_component.apply_to_body(player, delta)
 
 	if player.modular_visuals:
 		player.modular_visuals.play_animation(&"walk", player.get_facing_direction_name())
-

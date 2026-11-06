@@ -43,7 +43,7 @@ func physics_update(delta: float) -> void:
 	_roll_timer -= delta
 
 	if player.velocity_component:
-		player.velocity_component.apply_to_body(player)
+		player.velocity_component.apply_to_body(player, delta)
 
 	if _roll_timer <= 0.0:
 		player.current_input_direction = player.get_movement_input()
@@ -51,4 +51,3 @@ func physics_update(delta: float) -> void:
 			state_machine.transition_to(&"move")
 		else:
 			state_machine.transition_to(&"idle")
-

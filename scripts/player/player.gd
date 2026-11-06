@@ -83,6 +83,22 @@ func _setup_combat_nodes() -> void:
 		attack_state.name = "Attack"
 		state_machine.add_child(attack_state)
 
+	# Fallback Hurt State in StateMachine if missing
+	if state_machine and not state_machine.has_node("Hurt"):
+		var hurt_state := PlayerHurtState.new()
+		hurt_state.name = "Hurt"
+		state_machine.add_child(hurt_state)
+
+	if hurtbox_component and not hurtbox_component.hit_received.is_connected(_on_hurtbox_hit_received):
+		hurtbox_component.hit_received.connect(_on_hurtbox_hit_received)
+
+
+func _on_hurtbox_hit_received(_hitbox: HitboxComponent) -> void:
+	if state_machine:
+		var cur := state_machine.get_current_state_name()
+		if cur != &"roll" and cur != &"hurt":
+			state_machine.transition_to(&"hurt")
+
 
 func get_movement_input() -> Vector2:
 	# 1. Keyboard / Gamepad input (automatically deadzoned and normalized by Godot)

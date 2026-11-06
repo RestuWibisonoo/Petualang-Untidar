@@ -31,10 +31,11 @@ func physics_update(delta: float) -> void:
 	# Bring any remaining movement to a halt
 	if enemy.velocity_component:
 		enemy.velocity_component.decelerate(delta)
-		enemy.velocity_component.apply_to_body(enemy)
+		enemy.velocity_component.apply_to_body(enemy, delta)
 
 	var target := enemy.find_target_player()
 	if target and is_instance_valid(target):
 		var dist: float = enemy.global_position.distance_to(target.global_position)
 		if dist <= enemy.aggro_radius:
 			state_machine.transition_to(&"chase")
+

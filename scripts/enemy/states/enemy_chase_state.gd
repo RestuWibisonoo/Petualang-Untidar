@@ -45,7 +45,8 @@ func physics_update(delta: float) -> void:
 	var dir: Vector2 = (target.global_position - enemy.global_position).normalized()
 	if enemy.velocity_component:
 		enemy.velocity_component.accelerate_in_direction(dir, delta)
-		enemy.velocity_component.apply_to_body(enemy)
+		enemy.velocity_component.apply_to_body(enemy, delta)
 
 	if enemy.sprite and absf(dir.x) > 0.05:
 		enemy.sprite.flip_h = dir.x < 0.0
+

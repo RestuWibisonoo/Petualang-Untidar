@@ -147,6 +147,7 @@ func test_knockback_physics_and_friction() -> void:
 	# Apply to body includes knockback velocity
 	velocity_comp.apply_to_body(body, 0.0)
 	_assert_test(body.velocity == impulse, "apply_to_body integrates knockback into body.velocity")
+	_assert_test(velocity_comp.velocity == Vector2.ZERO, "Normal velocity does not absorb knockback")
 
 	# Decay after 0.1s: 200 - (1000 * 0.1) = 100
 	velocity_comp.update_knockback(0.1)
@@ -298,6 +299,15 @@ func test_player_attack_state_and_combo_system() -> void:
 	# Exit attack back to Idle
 	attack_state.physics_update(attack_state.startup_duration + attack_state.active_duration + attack_state.recovery_duration + 0.05)
 	_assert_test(fsm.get_current_state_name() == &"idle", "Player cleanly returned to Idle state after combo completion")
+
+	# Test PlayerHurtState
+	_assert_test(fsm.has_node("Hurt"), "Player StateMachine contains PlayerHurtState")
+	var hurt_state := fsm.get_node_or_null("Hurt") as PlayerHurtState
+	_assert_test(hurt_state != null, "PlayerHurtState exists on Player")
+	fsm.transition_to(&"hurt")
+	_assert_test(fsm.get_current_state_name() == &"hurt", "Player transitioned to Hurt state on hit")
+	hurt_state.physics_update(hurt_state.hurt_duration + 0.05)
+	_assert_test(fsm.get_current_state_name() == &"idle", "Player returned to Idle after hurt duration elapsed")
 
 	player.queue_free()
 

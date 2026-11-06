@@ -47,3 +47,4 @@ func physics_update(delta: float) -> void:
 				return
 
 		state_machine.transition_to(&"idle")
+

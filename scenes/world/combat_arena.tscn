@@ -192,3 +192,4 @@ text = "Arena Latihan Tempur Untidar"
 
 [node name="InfoDialogPanel" parent="HUD" instance=ExtResource("7_info")]
 visible = false
+

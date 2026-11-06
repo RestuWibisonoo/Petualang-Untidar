@@ -68,7 +68,7 @@ func physics_update(delta: float) -> void:
 	# Maintain deceleration
 	if enemy.velocity_component:
 		enemy.velocity_component.decelerate(delta)
-		enemy.velocity_component.apply_to_body(enemy)
+		enemy.velocity_component.apply_to_body(enemy, delta)
 
 	var hitbox := enemy.hitbox_component
 	var total_duration: float = startup_duration + active_duration + recovery_duration
@@ -109,3 +109,4 @@ func exit() -> void:
 	if enemy and enemy.hitbox_component:
 		enemy.hitbox_component.is_active = false
 		enemy.hitbox_component.reset_hit_targets()
+

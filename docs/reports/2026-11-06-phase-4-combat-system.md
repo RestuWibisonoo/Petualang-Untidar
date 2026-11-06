@@ -148,6 +148,7 @@ $$\text{final\_damage} = \max(0, \text{raw\_damage} - \text{defense})$$
 * `scripts/enemy/states/enemy_attack_state.gd`: State AI serang melee dan cooldown (`class_name EnemyAttackState`).
 * `scripts/enemy/states/enemy_hurt_state.gd`: State reaksi stagger dan peluruhan knockback (`class_name EnemyHurtState`).
 * `scripts/player/states/player_attack_state.gd`: State serang combo 2-tahap pemain (`class_name PlayerAttackState`).
+* `scripts/player/states/player_hurt_state.gd`: State stagger, knockback decay, dan dodge-cancel pemain (`class_name PlayerHurtState`).
 * `scripts/world/combat_arena.gd`: Level controller arena tempur turunan `WorldBase` (`class_name CombatArena`).
 * `scenes/world/combat_arena.tscn`: Scene arena tempur lengkap dengan boundary, 2 dummy slime, player, dan HUD.
 * `assets/enemies/dummy_slime.png`: Tekstur pixel art 32x32 RGBA dummy slime musuh.
@@ -183,17 +184,18 @@ Pengujian dijalankan pada headless Godot Engine 4.7.2 resmi:
 =======================================================
 --- 1. Testing Combat Collision Matrix & Layers --- (17 PASS)
 --- 2. Testing Damage & Defense Absorption --- (3 PASS)
---- 3. Testing Directional Knockback & Friction Decay --- (4 PASS)
+--- 3. Testing Directional Knockback & Friction Decay --- (7 PASS)
 --- 4. Testing I-Frames Authority & Single-Hit Tracking --- (7 PASS)
 --- 5. Testing Faction Filtering & Friendly Fire Prevention --- (4 PASS)
 --- 6. Testing Player Attack State & 2-Stage Combo System --- (15 PASS)
---- 7. Testing BaseEnemy Instantiation & Parameters --- (10 PASS)
---- 8. Testing BaseEnemy FSM States & Death Lifecycle --- (19 PASS)
---- 9. Testing Combat Arena Scene & Structure --- (13 PASS)
+--- 7. Testing Player Hurt State & Knockback Isolation --- (2 PASS)
+--- 8. Testing BaseEnemy Instantiation & Parameters --- (10 PASS)
+--- 9. Testing BaseEnemy FSM States & Death Lifecycle --- (19 PASS)
+--- 10. Testing Combat Arena Scene & Structure --- (13 PASS)
 
 =======================================================
 >>> PHASE 4 VALIDATION SUMMARY <<<
-Passed: 92
+Passed: 97
 Failed: 0
 =======================================================
 [SUCCESS] All Phase 4 combat foundation components validated with 0 errors!
@@ -208,13 +210,14 @@ Failed: 0
 --- 2. Testing Knockback Obstacle Boundary Collision (Zero Clipping) --- (3 PASS)
 --- 3. Testing Runtime 2-Stage Combo Chain & Buffering --- (4 PASS)
 --- 4. Testing Runtime Enemy Aggro & Pursuit Behavior --- (2 PASS)
---- 5. Testing Runtime Enemy Attack & Player I-Frames Protection --- (4 PASS)
---- 6. Testing Runtime Enemy Death, Defeat Signal & Node Cleanup --- (4 PASS)
---- 7. Testing World Scene Transitions between Outdoor & Arena --- (9 PASS)
+--- 5. Testing Runtime Enemy Attack, Hurt Stagger & Player I-Frames Protection --- (7 PASS)
+--- 6. Testing Player Knockback Decay, Normal Velocity Isolation & Obstacle Collision --- (11 PASS)
+--- 7. Testing Runtime Enemy Death, Defeat Signal & Node Cleanup --- (4 PASS)
+--- 8. Testing World Scene Transitions between Outdoor & Arena --- (9 PASS)
 
 =======================================================
 >>> RUNTIME SIMULATION SUMMARY <<<
-Passed: 33
+Passed: 47
 Failed: 0
 =======================================================
 [SUCCESS] All Phase 4 runtime simulations passed with 0 errors!
@@ -222,23 +225,70 @@ Failed: 0
 
 ### 7.3 Full Project Regression Summary Across All Phases
 
-| Test Suite | File | Ruang Lingkup | Hasil | Status |
-| :--- | :--- | :--- | :---: | :---: |
-| **Phase 1 Foundation** | `tests/test_phase_1.gd` | Core Singletons, FSM, Components, Settings | 45 / 45 PASS | 100% PASS |
-| **Phase 2 Character** | `tests/test_phase_2.gd` | 8-Dir, Modular Visuals, Camera, Touch Controls | 73 / 73 PASS | 100% PASS |
-| **Phase 3 World Unit** | `tests/test_phase_3.gd` | Hierarchy, Y-Sort, Interaction, Objects, Doors | 91 / 91 PASS | 100% PASS |
-| **Phase 3 Runtime** | `tests/runtime_validation_phase_3.gd` | Multi-frame Y-Sort, Info Panel, Scene Transitions | 78 / 78 PASS | 100% PASS |
-| **Phase 4 Combat Unit** | `tests/test_phase_4.gd` | Collision Matrix, Factions, Combos, Enemy AI | 92 / 92 PASS | 100% PASS |
-| **Phase 4 Runtime** | `tests/runtime_validation_phase_4.gd` | Real-time Combat Physics, Knockback, Death, Arena | 33 / 33 PASS | 100% PASS |
-| **TOTAL REGRESI** | **6 Suites** | **Seluruh Fondasi Game Petualang Untidar** | **412 / 412 PASS** | **100% PASS** |
+| Test Suite | File | Ruang Lingkup | Hasil Sebelum Fix | Hasil Sesudah Fix | Status |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Phase 1 Foundation** | `tests/test_phase_1.gd` | Core Singletons, FSM, Components, Settings | 45 / 45 PASS | 45 / 45 PASS | 100% PASS |
+| **Phase 2 Character** | `tests/test_phase_2.gd` | 8-Dir, Modular Visuals, Camera, Touch Controls | 73 / 73 PASS | 73 / 73 PASS | 100% PASS |
+| **Phase 3 World Unit** | `tests/test_phase_3.gd` | Hierarchy, Y-Sort, Interaction, Objects, Doors | 91 / 91 PASS | 91 / 91 PASS | 100% PASS |
+| **Phase 3 Runtime** | `tests/runtime_validation_phase_3.gd` | Multi-frame Y-Sort, Info Panel, Scene Transitions | 78 / 78 PASS | 78 / 78 PASS | 100% PASS |
+| **Phase 4 Combat Unit** | `tests/test_phase_4.gd` | Collision Matrix, Factions, Combos, Enemy AI | 92 / 92 PASS | 97 / 97 PASS | 100% PASS |
+| **Phase 4 Runtime** | `tests/runtime_validation_phase_4.gd` | Real-time Combat Physics, Knockback, Death, Arena | 33 / 33 PASS | 47 / 47 PASS | 100% PASS |
+| **TOTAL REGRESI** | **6 Suites** | **Seluruh Fondasi Game Petualang Untidar** | **412 / 412 PASS** | **431 / 431 PASS** | **100% PASS** |
 
 > [!NOTE]
 > Pengujian fisik pada perangkat keras Android (real device) tetap dijadwalkan pada **Phase 8: Deployment & Optimization** sesuai roadmap proyek.
 
 ---
 
-## 8. Conclusion & Next Steps
+## 8. Post-Implementation Audit Fix: Knockback Velocity Integration & PlayerHurtState
 
-Seluruh kriteria penerimaan dan arsitektur teknis **Phase 4: Combat System** telah selesai diimplementasikan secara solid, teruji bebas regresi, dan terdokumentasi rapi.
+Menindaklanjuti code review pasca-implementasi Phase 4, dilakukan audit mendalam dan perbaikan terarah terhadap integrasi vektor knockback dan penanganan stagger pemain.
+
+### 8.1 Temuan Audit & Analisis Akar Masalah (Root Causes)
+1. **Kebocoran Knockback ke Normal Velocity pada `VelocityComponent`:**
+   - *Masalah:* Method `apply_to_body()` sebelumnya menjumlahkan `velocity + knockback_velocity` ke `body.velocity`. Setelah `move_and_slide()` dieksekusi, hasil `body.velocity` langsung disimpan kembali ke `velocity = body.velocity`.
+   - *Akar Masalah:* Ketika entitas mengalami tabrakan dengan rintangan atau bergerak selama menerima knockback, sisa momentum knockback terserap permanen ke dalam `velocity` normal karakter, menyebabkan pergerakan drifting yang tidak diinginkan dan potensi akumulasi vektor tak terkendali.
+2. **Ketiadaan Integrasi Delta Fisika pada State Pemain:**
+   - *Masalah:* State pemain (`PlayerIdleState`, `PlayerMoveState`, `PlayerRollState`, `PlayerAttackState`) memanggil `velocity_component.apply_to_body(player)` tanpa parameter `delta` (default `0.0`).
+   - *Akar Masalah:* Akibat `delta == 0.0`, method `update_knockback(delta)` tidak pernah menjalankan friksi peluruhan saat pemain berada di state-state tersebut, sehingga knockback pemain terhenti atau tidak meluruh secara mulus.
+3. **Ketiadaan State Stagger Dedikasi pada Pemain (`PlayerHurtState`):**
+   - *Masalah:* Pemain yang terkena hit dari musuh tidak memiliki visual/fungsional stagger terdedikasi, berisiko langsung memicu serangan atau roll tanpa transisi yang bersih.
+
+### 8.2 Solusi & Perbaikan yang Diterapkan
+1. **Refactoring `VelocityComponent` (`scripts/components/velocity_component.gd`):**
+   - Mengisolasi variabel `velocity` (kecepatan gerak sengaja) dan `knockback_velocity` (impuls eksternal).
+   - Saat `knockback_velocity != Vector2.ZERO`:
+     - `body.velocity = velocity + knockback_velocity`.
+     - Mengeksekusi `body.move_and_slide()`.
+     - Mengiterasi tabrakan slide via `body.get_slide_collision()` dan memproyeksikan normal tabrakan secara terpisah ke `velocity` dan `knockback_velocity` (`slide(normal)`), sehingga knockback tidak mencemari `velocity`.
+   - Saat `knockback_velocity == Vector2.ZERO`:
+     - Melakukan assignment standar `velocity = body.velocity`.
+   - Menambahkan peluruhan otomatis `update_knockback(delta)` berbasis friksi `800.0 px/s²` dan snapping ke `Vector2.ZERO` bila panjang kuadrat $< 0.01$.
+   - Menambahkan guard validasi `@GlobalScope.is_finite(delta)` dan `velocity.is_finite()` untuk mencegah nilai NaN atau tak terhingga.
+2. **Integrasi Delta Fisika Konsisten di Seluruh State:**
+   - Memperbarui pemanggilan `velocity_component.apply_to_body(player, delta)` di seluruh state pemain (`PlayerIdleState`, `PlayerMoveState`, `PlayerRollState`, `PlayerAttackState`).
+   - Memperbarui pemanggilan `velocity_component.apply_to_body(enemy, delta)` di seluruh state musuh (`EnemyIdleState`, `EnemyChaseState`, `EnemyAttackState`).
+3. **Implementasi `PlayerHurtState` (`scripts/player/states/player_hurt_state.gd`):**
+   - Durasi stagger singkat 0.15s dengan integrasi peluruhan knockback.
+   - Membatalkan hitbox serang yang sedang aktif saat terkena pukulan.
+   - Mendukung dodge-cancel responsif (pemain dapat langsung melakukan roll darurat untuk menghindar).
+   - Kembali secara mulus ke `Move` (jika input arah ditahan) atau `Idle` setelah stagger selesai.
+   - Terkoneksi otomatis via `hurtbox_component.hit_received` di `Player.gd`.
+
+### 8.3 Hasil Uji Validasi Pasca-Fix
+- Unit test combat bertambah dari 92 $\to$ 97 assertions (100% PASS).
+- Runtime simulation suite bertambah dari 33 $\to$ 47 assertions (100% PASS), mencakup 10 kriteria runtime spesifik (knockback direction, frame decay, zero reach, normal velocity isolation, obstacle zero clipping, roll/attack recovery, dan I-frames).
+- Total regresi proyek: **431 / 431 assertions PASS (100%)**.
+
+### 8.4 Sisa Technical Debt & Scope Mendatang
+1. **Fallback Animasi ModularVisuals:** State serangan dan hurt saat ini menggunakan fallback terarah (`attack_down` dan `hurt_down`) via warning log terkontrol hingga sprite sheet visual directional diselesaikan oleh tim art di fase mendatang.
+2. **Pengujian Perangkat Keras Android:** Pengujian performa input sentuh dan frame rate pada perangkat fisik Android tetap dialokasikan pada Phase 8 (Deployment & Optimization).
+
+---
+
+## 9. Conclusion & Next Steps
+
+Seluruh kriteria penerimaan dan arsitektur teknis **Phase 4: Combat System** beserta audit perbaikan knockback velocity integration telah selesai diimplementasikan secara solid, teruji bebas regresi, dan terdokumentasi rapi.
 
 Fondasi combat ini siap untuk dihubungkan dengan **Phase 5: Loot & Progression** (sistem inventaris, drop loot berbobot persentase saat musuh terkalahkan, dan peningkatan status senjata/armor karakter).
+

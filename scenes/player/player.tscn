@@ -19,6 +19,8 @@
 [ext_resource type="Script" path="res://scripts/components/health_component.gd" id="17_4hvnv"]
 [ext_resource type="Script" path="res://scripts/components/velocity_component.gd" id="18_bbmj2"]
 [ext_resource type="Script" path="res://scripts/components/interaction_component.gd" id="19_lgqa7"]
+[ext_resource type="Script" path="res://scripts/player/states/player_attack_state.gd" id="20_attack"]
+[ext_resource type="Script" path="res://scripts/player/states/player_hurt_state.gd" id="21_hurt"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_kxw46"]
 radius = 6.0
@@ -1600,6 +1602,12 @@ script = ExtResource("15_pk8ii")
 
 [node name="Roll" type="Node" parent="StateMachine" unique_id=1635901434]
 script = ExtResource("16_5mf0n")
+
+[node name="Attack" type="Node" parent="StateMachine"]
+script = ExtResource("20_attack")
+
+[node name="Hurt" type="Node" parent="StateMachine"]
+script = ExtResource("21_hurt")
 
 [node name="HealthComponent" type="Node" parent="." unique_id=250044538]
 script = ExtResource("17_4hvnv")

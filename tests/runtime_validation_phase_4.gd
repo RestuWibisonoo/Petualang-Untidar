@@ -25,6 +25,7 @@ func _run_runtime_suite() -> void:
 	await test_runtime_combo_chain_execution()
 	await test_runtime_enemy_aggro_and_chase()
 	await test_runtime_enemy_attack_and_player_iframes()
+	await test_runtime_player_knockback_decay_and_obstacle()
 	await test_runtime_enemy_death_and_cleanup()
 	await test_runtime_arena_scene_transition()
 
@@ -108,17 +109,17 @@ func test_runtime_knockback_obstacle_collision() -> void:
 
 	# Position enemy right near the right world boundary (x = 160, boundary at x = 175)
 	enemy.global_position = Vector2(160, 0)
+	enemy.velocity_component.stop()
 
 	# Apply massive knockback directly into the wall (e.g. 800 px/s)
 	enemy.velocity_component.apply_knockback(Vector2(800, 0))
 
-	# Advance physics simulation for 30 frames
-	for f in range(30):
-		await _wait_physics_frames(1)
+	# Advance physics simulation for 4 frames while knockback is pressing against the wall
+	await _wait_physics_frames(4)
 
-	# Verify enemy remained inside boundary (x must not exceed 165 px)
+	# Verify enemy remained inside boundary (x must not exceed 165 px) and is flush against obstacle
 	_assert_test(enemy.global_position.x <= 165.0, "Enemy knockback cleanly halted by wall collider without clipping (x <= 165)")
-	_assert_test(enemy.global_position.x >= 155.0, "Enemy remains flush against obstacle")
+	_assert_test(enemy.global_position.x >= 155.0, "Enemy remains flush against obstacle during knockback")
 
 	arena.queue_free()
 	await _wait_physics_frames(2)
@@ -187,7 +188,7 @@ func test_runtime_enemy_aggro_and_chase() -> void:
 
 
 func test_runtime_enemy_attack_and_player_iframes() -> void:
-	print("\n--- 5. Testing Runtime Enemy Attack & Player I-Frames Protection ---")
+	print("\n--- 5. Testing Runtime Enemy Attack, I-Frames & Player Hurt State ---")
 
 	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
 	var arena: CombatArena = arena_scene.instantiate() as CombatArena
@@ -202,6 +203,11 @@ func test_runtime_enemy_attack_and_player_iframes() -> void:
 	enemy.global_position = Vector2(16, 0)
 
 	var initial_player_hp: int = player.health_component.current_health
+	var player_entered_hurt: Array[bool] = [false]
+	player.state_machine.transitioned.connect(func(state_name):
+		if state_name == &"hurt":
+			player_entered_hurt[0] = true
+	)
 
 	# Wait for enemy to transition from chase to attack
 	await _wait_physics_frames(15)
@@ -213,6 +219,7 @@ func test_runtime_enemy_attack_and_player_iframes() -> void:
 
 	_assert_test(player.health_component.current_health < initial_player_hp, "Player received damage from enemy attack")
 	_assert_test(player.hurtbox_component.is_invulnerable, "Player Hurtbox is currently invulnerable (I-Frames active)")
+	_assert_test(player_entered_hurt[0], "Player entered PlayerHurtState upon receiving damage")
 
 	var hp_after_first_hit := player.health_component.current_health
 
@@ -220,12 +227,86 @@ func test_runtime_enemy_attack_and_player_iframes() -> void:
 	await _wait_physics_frames(5)
 	_assert_test(player.health_component.current_health == hp_after_first_hit, "Player I-Frames successfully prevented multi-tick damage during attack")
 
+	# Wait until hurt duration finishes and verify return to Idle
+	await _wait_physics_frames(15)
+	_assert_test(player.state_machine.get_current_state_name() == &"idle", "Player cleanly returned to Idle state after hurt duration finished")
+
+	arena.queue_free()
+	await _wait_physics_frames(2)
+
+
+func test_runtime_player_knockback_decay_and_obstacle() -> void:
+	print("\n--- 6. Testing Player Knockback Decay, Normal Velocity Isolation & Obstacle Collision ---")
+
+	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
+	var arena: CombatArena = arena_scene.instantiate() as CombatArena
+	get_root().add_child(arena)
+	await _wait_physics_frames(4)
+
+	var player: Player = arena.player
+
+	# Part A: Player knockback direction, decay, and normal velocity isolation
+	player.global_position = Vector2(0, 0)
+	player.velocity_component.stop()
+
+	# Apply a known knockback vector (away from right side: (-200, 0))
+	player.velocity_component.apply_knockback(Vector2(-200, 0))
+	var initial_kb := player.velocity_component.knockback_velocity.length()
+	_assert_test(initial_kb == 200.0, "Initial knockback applied away from attack source")
+
+	# Track decay across physics frames
+	await _wait_physics_frames(5)
+	var mid_kb := player.velocity_component.knockback_velocity.length()
+	_assert_test(mid_kb < initial_kb and mid_kb > 0.0, "Player knockback velocity decays each physics frame (%.1f -> %.1f)" % [initial_kb, mid_kb])
+	_assert_test(player.global_position.x < 0.0, "Player position moved leftward away from attack source")
+
+	# Wait until completely dissipated (200 / 800 = 0.25s = 15 frames, wait 20)
+	await _wait_physics_frames(20)
+	_assert_test(player.velocity_component.knockback_velocity == Vector2.ZERO, "Player knockback reaches Vector2.ZERO after decay")
+	_assert_test(player.velocity_component.velocity == Vector2.ZERO, "Player intentional velocity remains Vector2.ZERO without knockback accumulation")
+
+	# Part B: Player can move normally after knockback ends
+	player.set_touch_input(Vector2.RIGHT)
+	await _wait_physics_frames(10)
+	_assert_test(player.velocity_component.velocity.x > 0.0, "Player accelerates rightward normally with movement input after knockback finishes")
+	player.set_touch_input(Vector2.ZERO)
+	await _wait_physics_frames(5)
+
+	# Part C: Player knockback against barrier obstacle (Zero Clipping)
+	# Position player near left arena boundary (-175 is wall, player at -160)
+	player.global_position = Vector2(-160, 0)
+	player.velocity_component.stop()
+
+	# Apply heavy knockback leftward directly into the wall (-500 px/s)
+	player.velocity_component.apply_knockback(Vector2(-500, 0))
+
+	# Advance 4 frames while knockback presses into wall
+	await _wait_physics_frames(4)
+	_assert_test(player.global_position.x >= -165.0, "Player knockback cleanly halted by wall collider without clipping (x >= -165.0)")
+	_assert_test(player.global_position.x <= -158.0, "Player flush against obstacle during knockback")
+
+	# Wait for knockback dissipation
+	await _wait_physics_frames(25)
+	_assert_test(player.velocity_component.knockback_velocity == Vector2.ZERO, "Knockback against obstacle dissipated cleanly to zero")
+	_assert_test(player.velocity_component.velocity == Vector2.ZERO, "Normal velocity remained zero and did not absorb obstacle knockback")
+
+	# Part D: Roll and Attack execution after knockback
+	# Test Dodge/Roll
+	player.trigger_dodge()
+	_assert_test(player.state_machine.get_current_state_name() == &"roll", "Player can execute Roll after knockback recovery")
+	await _wait_physics_frames(20) # wait for roll duration
+
+	# Test Attack
+	player.trigger_attack()
+	_assert_test(player.state_machine.get_current_state_name() == &"attack", "Player can execute Attack after knockback recovery")
+	await _wait_physics_frames(25) # wait for attack duration
+
 	arena.queue_free()
 	await _wait_physics_frames(2)
 
 
 func test_runtime_enemy_death_and_cleanup() -> void:
-	print("\n--- 6. Testing Runtime Enemy Death, Defeat Signal & Node Cleanup ---")
+	print("\n--- 7. Testing Runtime Enemy Death, Defeat Signal & Node Cleanup ---")
 
 	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
 	var arena: CombatArena = arena_scene.instantiate() as CombatArena
@@ -264,7 +345,7 @@ func test_runtime_enemy_death_and_cleanup() -> void:
 
 
 func test_runtime_arena_scene_transition() -> void:
-	print("\n--- 7. Testing World Scene Transitions between Outdoor & Arena ---")
+	print("\n--- 8. Testing World Scene Transitions between Outdoor & Arena ---")
 
 	var scene_manager: Node = get_root().get_node_or_null("SceneManager")
 	_assert_test(scene_manager != null, "SceneManager autoload is accessible")
@@ -311,11 +392,11 @@ func _print_summary() -> void:
 	print(">>> RUNTIME SIMULATION SUMMARY <<<")
 	print("Passed: %d" % _tests_passed)
 	print("Failed: %d" % _tests_failed)
-	print("=======================================================\n")
+	print("=======================================================")
 
 	if _tests_failed == 0:
-		print("[SUCCESS] All Phase 4 runtime simulations passed with 0 errors!\n")
+		print("\n[SUCCESS] All Phase 4 runtime simulations passed with 0 errors!\n")
 		quit(0)
 	else:
-		printerr("[ERROR] Phase 4 runtime simulation failed with %d errors!\n" % _tests_failed)
+		printerr("\n[ERROR] Phase 4 runtime simulation failed with %d errors!\n" % _tests_failed)
 		quit(1)

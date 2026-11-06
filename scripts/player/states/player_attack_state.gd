@@ -85,7 +85,7 @@ func physics_update(delta: float) -> void:
 	# Natural deceleration during attack swing
 	if player.velocity_component:
 		player.velocity_component.decelerate(delta)
-		player.velocity_component.apply_to_body(player)
+		player.velocity_component.apply_to_body(player, delta)
 
 	# Check for combo input buffer
 	if Input.is_action_just_pressed("attack"):

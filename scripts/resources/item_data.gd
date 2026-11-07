@@ -84,3 +84,4 @@ func get_type_name() -> String:
 			return "Quest Item"
 		_:
 			return "General"
+

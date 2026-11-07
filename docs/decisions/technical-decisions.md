@@ -311,7 +311,8 @@
   1. Operasi penambahan (`add_item`) mengutamakan pengisian stack sejenis hingga `max_stack` sebelum mengonsumsi slot kosong baru.
   2. Mendukung *partial insertion*: item disisipkan sebanyak sisa ruang yang tersedia, dan kuantitas overflow dikembalikan tanpa membuang item.
   3. Penukaran dan pemindahan slot (`swap_slots`, `move_slot`) dijalankan secara atomik dalam 1 frame tanpa risiko item hilang di tengah proses.
-  4. Snapshot data diekspor sebagai deep-copy (`get_slots_snapshot()`) untuk melindungi internal inventory dari manipulasi eksternal UI.
+  4. Snapshot data diekspor sebagai deep-copy (`get_inventory_snapshot()`) dengan duplikasi resource `ItemData` (`duplicate(true)`) dan API pembacaan aman (`get_slot_data()`), sehingga mutasi eksternal tidak dapat mengubah data internal inventory maupun resource asli.
+  5. Seluruh mutasi slot oleh sistem luar (seperti `EquipmentManager`) wajib menggunakan API resmi `replace_slot_item()`, `set_slot()`, atau `clear_slot()`.
 * **Alasan Pemilihan:**
   1. Menghilangkan celah duplikasi item (*item duplication exploit*) yang biasa terjadi pada manipulasi inventaris asinkron.
   2. Menjamin batas kapasitas tetap (20 slot) dipatuhi secara ketat di semua skenario transaksi.
@@ -321,12 +322,12 @@
 
 ### ADR-021: Character Stats Composition & Dynamic Combat Recalculation
 
-* **Konteks:** Statistik tempur karakter (HP, Attack, Defense, Movement Speed) dipengaruhi oleh base level stats, bonus equipment yang dikenakan, dan alokasi stat points pemain saat naik level.
+* **Konteks:** Statistik tempur karakter (HP, Attack, Defense, Movement Speed) dipengaruhi oleh base level stats, bonus equipment yang dikenakan (4 slot: Weapon, Head, Body, Accessory), dan alokasi stat points pemain saat naik level.
 * **Keputusan:** Menggunakan `CharacterStats` terpusat yang menghitung total stat secara dinamis:
   - $\text{Stat Total} = \text{Base} + \text{Equipment Bonus} + \text{Allocated Bonus}$
-  - Mengintegrasikan stat total ke `PlayerAttackState` (skalasi damage combo), `HurtboxComponent` (reduksi damage via defense), dan `VelocityComponent` (skalasi move speed).
+  - Mengintegrasikan stat total ke `PlayerAttackState` (skalasi damage combo dari selisih `attack - base_attack`), `HurtboxComponent` (reduksi damage via defense), dan `VelocityComponent` (skalasi move speed).
   - Mekanisme anti-exploit Max HP clamping: pelepasan armor mengurangi current HP jika melebihi batas baru, namun pemakaian armor tidak langsung menyembuhkan HP pemain (*no auto-heal exploit*).
-  - Formula kurva level progresif: $\text{Required EXP} = \text{int}(100 \times \text{level}^{1.2})$ dengan dukungan multi-level overflow dan alokasi 3 stat points per level.
+  - Formula kurva level progresif: $\text{Required EXP} = \text{int}(100 \times \text{level}^{1.4})$ dengan dukungan multi-level overflow dan alokasi 3 stat points per level (+10 Max HP, +2 Attack, +1 Defense).
 * **Alasan Pemilihan:**
   1. Menghindari duplikasi kalkulasi stat di berbagai skrip combat.
   2. Mencegah exploit "equip armor to heal" yang umum pada game RPG.
@@ -337,16 +338,17 @@
 
 ### ADR-022: Event-Driven Loot Spawner & Single-Pickup Ground Item Architecture
 
-* **Konteks:** Ketika musuh dikalahkan, sistem harus mendistribusikan EXP dan memunculkan item drop di lantai tanpa menyebabkan race condition atau query collision flush error pada Godot physics engine.
+* **Konteks:** Ketika musuh dikalahkan, sistem harus mendistribusikan EXP dan memunculkan item drop di lantai tanpa menyebabkan race condition atau query collision flush error pada Godot physics engine, serta mendukung pembunuhan musuh sejenis dalam waktu berdekatan.
 * **Keputusan:** Mengimplementasikan arsitektur decoupled:
-  1. Musuh memancarkan `EventBus.enemy_defeated_at(enemy_id, position, exp_reward, loot_table)`.
-  2. `LootSpawner` di level menangani sinyal, memberikan EXP secara otomatis ke `CharacterStats`, dan mengevaluasi `LootTable`.
-  3. Drop item diinstansiasi sebagai `WorldItem` (`Area2D` di Layer 8) secara `call_deferred("add_child", item)` untuk menghindari error `Can't change this state while flushing queries`.
-  4. `WorldItem` memiliki single-pickup lock (`_is_collected`) dan ground rejection: jika inventaris pemain penuh, item tetap aman di lantai dan tidak hilang.
+  1. Musuh memancarkan `EventBus.enemy_defeated_at(enemy_id, position, exp_reward, loot_table, enemy_instance_id)`.
+  2. `LootSpawner` di level menangani sinyal, mendistribusikan EXP data-driven secara otomatis ke `CharacterStats`, dan mengevaluasi `LootTable` tanpa fallback hardcoded.
+  3. Deduplikasi event menggunakan `enemy_instance_id` (setiap instance musuh hanya memberi reward 1 kali, namun dua musuh berbeda ber-`enemy_id` sama yang mati bersamaan tetap memberikan reward masing-masing secara independen). Cache dibersihkan secara berkala untuk mencegah memory leak.
+  4. Drop item diinstansiasi sebagai `WorldItem` (`Area2D` di Layer 8) secara `call_deferred("add_child", item)` untuk menghindari error `Can't change this state while flushing queries`.
+  5. `WorldItem` mendukung pengambilan parsial (*partial pickup*): jika ransel hanya muat sebagian, kuantitas item di dunia berkurang dan sisanya tetap tertinggal di tanah. Entitas hanya dihapus saat kuantitas mencapai 0.
 * **Alasan Pemilihan:**
   1. Memisahkan siklus hidup musuh dari proses spawn loot; musuh dapat langsung di-`queue_free()` tanpa menunggu animasi drop item.
-  2. Ground rejection melindungi barang pemain dari hilang sia-sia akibat inventaris penuh.
-  3. Single-pickup lock mencegah pengambilan ganda saat area overlap terpicu beruntun.
+  2. Ground rejection dan partial pickup melindungi barang pemain dari hilang sia-sia akibat inventaris penuh.
+  3. Single-pickup lock debounce mencegah pengambilan ganda saat area overlap terpicu beruntun.
 * **Konsekuensi:** Semua scene musuh harus memiliki properti `exp_reward` dan referensi `loot_table`.
 
 

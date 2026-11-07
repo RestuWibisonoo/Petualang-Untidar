@@ -187,13 +187,15 @@ func refresh_grid() -> void:
 		var icon_rect := btn.get_node_or_null("Icon") as TextureRect
 		var qty_lbl := btn.get_node_or_null("Qty") as Label
 
-		var slot := inv.get_slot(i)
-		if slot and not slot.is_empty():
+		var data := inv.get_slot_data(i)
+		if not data.is_empty() and not data.get("is_empty", true):
+			var item: ItemData = data.get("item_data") as ItemData
+			var qty: int = int(data.get("quantity", 1))
 			if icon_rect:
-				icon_rect.texture = slot.item_data.icon
-				icon_rect.visible = true
+				icon_rect.texture = item.icon if item else null
+				icon_rect.visible = item != null
 			if qty_lbl:
-				qty_lbl.text = str(slot.quantity) if slot.quantity > 1 else ""
+				qty_lbl.text = str(qty) if qty > 1 else ""
 				qty_lbl.visible = true
 		else:
 			if icon_rect:
@@ -270,12 +272,15 @@ func _update_detail_panel() -> void:
 		_clear_detail_panel()
 		return
 
-	var slot := inv.get_slot(_selected_slot_index)
-	if not slot or slot.is_empty():
+	var slot_data := inv.get_slot_data(_selected_slot_index)
+	if slot_data.is_empty() or slot_data.get("is_empty", true):
 		_clear_detail_panel()
 		return
 
-	var item := slot.item_data
+	var item := slot_data.get("item_data") as ItemData
+	if not item:
+		_clear_detail_panel()
+		return
 	if item_icon:
 		item_icon.texture = item.icon
 		item_icon.visible = true
@@ -341,11 +346,14 @@ func _on_equip_pressed() -> void:
 	if not inv or not inv.is_valid_slot(_selected_slot_index):
 		return
 
-	var slot := inv.get_slot(_selected_slot_index)
-	if not slot or slot.is_empty():
+	var slot_data := inv.get_slot_data(_selected_slot_index)
+	if slot_data.is_empty() or slot_data.get("is_empty", true):
 		return
 
-	var item := slot.item_data
+	var item := slot_data.get("item_data") as ItemData
+	if not item:
+		return
+
 	if item is EquipmentData:
 		var equip := _get_equip()
 		if equip:
@@ -397,3 +405,4 @@ func _get_stats() -> CharacterStats:
 	if character_stats:
 		return character_stats
 	return CharacterStats.get_default()
+

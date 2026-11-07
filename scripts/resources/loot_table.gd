@@ -64,3 +64,4 @@ func roll_loot(rng: RandomNumberGenerator = null) -> Array[Dictionary]:
 				})
 
 	return drops
+

@@ -132,8 +132,8 @@ func test_inventory_manager_stacking_and_capacity() -> void:
 	# 6. Partial insertion test:
 	# Slot 0 has 20 potions, slot 1 has 5 potions, slot 2 has sword, slot 3 has sword.
 	# Fill slot 1 to 20, and clear slot 3. Total space available is now exactly 20.
-	inv.get_slot(1).quantity = 20
-	inv.get_slot(3).clear()
+	inv.set_slot(1, potion, 20)
+	inv.clear_slot(3)
 	_assert_test(inv.get_available_space_for(potion) == 20, "Total available space in inventory is exactly 20")
 
 	# Attempt to insert 30 items
@@ -194,6 +194,22 @@ func test_inventory_move_swap_and_snapshots() -> void:
 	_assert_test(snapshot.size() == 6, "Snapshot returns 6 entries")
 	snapshot[3]["quantity"] = 999
 	_assert_test(inv.get_slot(3).quantity == 15, "Internal slot quantity unaffected by modifying external snapshot")
+	var orig_name: String = inv.get_slot(3).item_data.item_name
+	snapshot[3]["item_data"].item_name = "Mutated Item Name"
+	_assert_test(inv.get_slot(3).item_data.item_name == orig_name, "Internal ItemData unaffected by mutating snapshot ItemData resource")
+
+	# 5. Safe slot reading: modifying returned InventorySlot copy or its ItemData does not corrupt internal state
+	var slot_copy := inv.get_slot(3)
+	slot_copy.quantity = 888
+	slot_copy.item_data.item_name = "Corrupted Slot Item"
+	_assert_test(inv.get_slot(3).quantity == 15, "Internal slot quantity unaffected by modifying returned InventorySlot copy")
+	_assert_test(inv.get_slot(3).item_data.item_name == orig_name, "Internal ItemData unaffected by modifying returned InventorySlot's item_data")
+
+	# 6. Safe get_slot_data API
+	var slot_data := inv.get_slot_data(3)
+	_assert_test(slot_data["quantity"] == 15 and not slot_data["is_empty"], "get_slot_data returns accurate dictionary data")
+	slot_data["item_data"].item_name = "Data Dict Mutated"
+	_assert_test(inv.get_slot(3).item_data.item_name == orig_name, "Internal ItemData unaffected by mutating get_slot_data item_data")
 
 	inv.free()
 
@@ -233,7 +249,7 @@ func test_equipment_manager_atomic_operations() -> void:
 	var replace_ok := equip_mgr.equip_from_inventory(1)
 	_assert_test(replace_ok, "Equipped iron sword replacing wooden sword")
 	_assert_test(equip_mgr.get_equipped_item(EquipmentData.EquipmentSlot.WEAPON) == sword_iron, "Iron sword now equipped in WEAPON slot")
-	_assert_test(inv.get_slot(1).item_data == sword_wood, "Wooden sword returned to inventory slot 1")
+	_assert_test(inv.get_slot(1).item_data.item_id == sword_wood.item_id, "Wooden sword returned to inventory slot 1")
 	_assert_test(stats.attack == 27, "Character attack elevated to 27 (+12 iron sword)")
 
 	# 3. Equip armor into BODY slot
@@ -328,6 +344,21 @@ func test_character_stats_and_combat_integration() -> void:
 	player.equipment_manager.equip_item_direct(leather_armor)
 	_assert_test(player.defense == 5, "Player defense synchronized to 5 from armor")
 	_assert_test(player.hurtbox_component.defense == 5, "Player hurtbox defense synchronized to 5")
+
+	# Test Base Attack != 15 and Stat Points Allocation scaling
+	player.character_stats.base_attack = 25
+	player.character_stats.available_stat_points = 2
+	var alloc_atk_ok := player.character_stats.allocate_stat_point(&"attack", 2) # +4 ATK
+	_assert_test(alloc_atk_ok, "Allocated 2 stat points to attack")
+	# Total attack: base_attack (25) + allocated (4) + iron_sword (12) = 41
+	_assert_test(player.character_stats.attack == 41, "Total attack with base 25, +4 allocated, +12 sword = 41")
+	# bonus_atk = attack (41) - base_attack (25) = 16
+	# Stage 1 damage = 15 + 16 = 31
+	fsm.transition_to(&"attack", {"combo_stage": 1})
+	_assert_test(player.hitbox_component.damage == 31, "Hitbox stage 1 damage dynamically scaled to 31 (15 + 16 bonus)")
+	# Stage 2 damage = 25 + 16 = 41
+	fsm.transition_to(&"attack", {"combo_stage": 2})
+	_assert_test(player.hitbox_component.damage == 41, "Hitbox stage 2 damage dynamically scaled to 41 (25 + 16 bonus)")
 
 	player.queue_free()
 	stats.free()
@@ -483,9 +514,106 @@ func test_loot_spawner_and_world_item_pickup() -> void:
 	var p_full_rejected := not full_item.pickup()
 	_assert_test(p_full_rejected, "Item stays in world when inventory is full (pickup rejected)")
 
+	# 3. Partial Pickup Test: WorldItem with 10 potions, inventory can only take 4
+	var partial_inv := InventoryManager.new()
+	partial_inv.slot_capacity = 1
+	partial_inv.initialize_slots()
+	partial_inv.add_item(potion, 16) # Slot 0 now has 16 potions (max_stack = 20, 4 spaces remain)
+	InventoryManager.instance = partial_inv
+
+	var partial_item: WorldItem = world_item_scene.instantiate() as WorldItem
+	partial_item.item_data = potion
+	partial_item.quantity = 10
+	partial_item.pickup_cooldown = 0.0
+	get_root().add_child(partial_item)
+
+	var p_partial_ok := partial_item.pickup()
+	_assert_test(p_partial_ok, "Partial pickup succeeded")
+	_assert_test(partial_inv.get_item_count(&"health_potion") == 20, "Inventory filled to max slot capacity (20 potions)")
+	_assert_test(partial_item.quantity == 6, "WorldItem quantity decremented to 6 (10 - 4 = 6)")
+	_assert_test(not partial_item._is_picked_up, "WorldItem remains active in world after partial pickup")
+
+	# Pickup again while full -> rejected
+	var p_second_rejected := not partial_item.pickup()
+	_assert_test(p_second_rejected, "Pickup attempt of remainder rejected while inventory remains full")
+	_assert_test(partial_item.quantity == 6, "WorldItem quantity remains 6 while inventory is full")
+
+	# Clear inventory and pickup remainder
+	partial_inv.clear_inventory()
+	partial_item.pickup_cooldown = 0.0
+	var p_remainder_ok := partial_item.pickup()
+	_assert_test(p_remainder_ok, "Pickup of remaining 6 potions succeeded once inventory freed")
+	_assert_test(partial_inv.get_item_count(&"health_potion") == 6, "Inventory received remaining 6 potions")
+	_assert_test(partial_item.quantity == 0, "WorldItem quantity reduced to 0")
+	_assert_test(partial_item._is_picked_up, "WorldItem marked collected after quantity reached 0")
+
+	partial_inv.free()
+
+	# 4. Multi-Enemy Same ID & Data-Driven Rewards Test
+	var stats := CharacterStats.new()
+	stats.reset_all()
+	CharacterStats.instance = stats
+
+	var jelly: ItemData = load("res://resources/items/slime_jelly.tres") as ItemData
+	var enemy_table_1 := LootTable.new()
+	enemy_table_1.entries.append(LootDropEntry.new(potion, 1.0, 1, 1, 100))
+
+	var enemy_table_2 := LootTable.new()
+	enemy_table_2.entries.append(LootDropEntry.new(jelly, 1.0, 3, 3, 100))
+
+	# Two distinct enemy instances sharing the same enemy_id
+	var enemy_1 := BaseEnemy.new()
+	var enemy_2 := BaseEnemy.new()
+	enemy_1.enemy_id = &"dummy_slime"
+	enemy_2.enemy_id = &"dummy_slime"
+	enemy_1.exp_reward = 40
+	enemy_2.exp_reward = 40
+	enemy_1.loot_table = enemy_table_1
+	enemy_2.loot_table = enemy_table_2
+
+	var inst_1 := enemy_1.get_instance_id()
+	var inst_2 := enemy_2.get_instance_id()
+	_assert_test(inst_1 != inst_2, "Two distinct enemy instances have different instance IDs")
+
+	# Both die nearly simultaneously
+	spawner._on_enemy_defeated_at(enemy_1.enemy_id, Vector2(10, 10), enemy_1.exp_reward, enemy_1.loot_table, inst_1)
+	spawner._on_enemy_defeated_at(enemy_2.enemy_id, Vector2(20, 20), enemy_2.exp_reward, enemy_2.loot_table, inst_2)
+
+	_assert_test(stats.current_exp == 80, "Both enemies with same enemy_id granted EXP (40 + 40 = 80)")
+
+	# Duplicate defeat on same enemy instance rejected
+	spawner._on_enemy_defeated_at(enemy_1.enemy_id, Vector2(10, 10), enemy_1.exp_reward, enemy_1.loot_table, inst_1)
+	_assert_test(stats.current_exp == 80, "Duplicate defeat event on same enemy instance rejected (EXP remains 80)")
+
+	# Data-driven different enemy with 60 EXP and different loot
+	var enemy_boss := BaseEnemy.new()
+	enemy_boss.enemy_id = &"goblin_scout"
+	enemy_boss.exp_reward = 60
+	enemy_boss.loot_table = enemy_table_2
+	spawner._on_enemy_defeated_at(enemy_boss.enemy_id, Vector2(30, 30), enemy_boss.exp_reward, enemy_boss.loot_table, enemy_boss.get_instance_id())
+	# 80 + 60 = 140 -> Level up! (threshold 100) -> Level 2, 40 remainder EXP
+	_assert_test(stats.level == 2, "Boss defeat triggered level up to level 2")
+	_assert_test(stats.current_exp == 40, "Accurate remainder EXP calculated from boss data-driven reward")
+
+	# Enemy with NO configuration (exp_reward = 0, loot_table = null) yields NO reward
+	var unconfigured_enemy := BaseEnemy.new()
+	unconfigured_enemy.enemy_id = &"ambient_butterfly"
+	unconfigured_enemy.exp_reward = 0
+	unconfigured_enemy.loot_table = null
+	var exp_before := stats.current_exp
+	spawner._on_enemy_defeated_at(unconfigured_enemy.enemy_id, Vector2(40, 40), unconfigured_enemy.exp_reward, unconfigured_enemy.loot_table, unconfigured_enemy.get_instance_id())
+	_assert_test(stats.current_exp == exp_before, "Unconfigured enemy yields 0 EXP (no accidental default fallback)")
+
 	# Cleanup
 	InventoryManager.instance = null
+	CharacterStats.instance = null
 	inv.free()
+	stats.free()
+	enemy_1.free()
+	enemy_2.free()
+	enemy_boss.free()
+	unconfigured_enemy.free()
+	partial_item.queue_free()
 	for item in spawned:
 		item.queue_free()
 	world_item.queue_free()

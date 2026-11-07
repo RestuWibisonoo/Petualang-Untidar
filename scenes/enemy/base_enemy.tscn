@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/enemy/states/enemy_chase_state.gd" id="9_chase"]
 [ext_resource type="Script" path="res://scripts/enemy/states/enemy_attack_state.gd" id="10_attack"]
 [ext_resource type="Script" path="res://scripts/enemy/states/enemy_hurt_state.gd" id="11_hurt"]
+[ext_resource type="Resource" path="res://resources/enemies/dummy_slime_loot.tres" id="12_loot"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 radius = 7.0
@@ -25,6 +26,8 @@ radius = 8.0
 collision_layer = 16
 collision_mask = 19
 script = ExtResource("1_enemy")
+exp_reward = 35
+loot_table = ExtResource("12_loot")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, 4)

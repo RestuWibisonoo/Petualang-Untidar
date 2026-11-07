@@ -24,7 +24,7 @@ signal equipment_changed(slot: StringName, item_data: Resource)
 signal quest_progress_updated(quest_id: StringName, current_step: int, total_steps: int)
 signal quest_completed(quest_id: StringName)
 signal enemy_defeated(enemy_id: StringName)
-signal enemy_defeated_at(enemy_id: StringName, position: Vector2)
+signal enemy_defeated_at(enemy_id: StringName, position: Vector2, exp_reward: int, loot_table: LootTable, enemy_instance_id: int)
 
 # --- State & Flow Signals ---
 signal game_state_changed(previous_state: int, new_state: int)

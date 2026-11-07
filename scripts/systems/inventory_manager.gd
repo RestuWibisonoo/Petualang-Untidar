@@ -45,10 +45,29 @@ func get_slot_count() -> int:
 	return _slots.size()
 
 
+## Safe slot reading API: returns an isolated copy of InventorySlot with a duplicated ItemData resource.
+## Modifying the returned object or its item_data does NOT mutate internal inventory state.
 func get_slot(index: int) -> InventorySlot:
-	if index >= 0 and index < _slots.size():
-		return _slots[index]
-	return null
+	if not is_valid_slot(index):
+		return null
+	var internal := _slots[index]
+	var copy := InventorySlot.new()
+	copy.item_data = internal.item_data.duplicate(true) if internal.item_data else null
+	copy.quantity = internal.quantity
+	return copy
+
+
+## Returns a read-only Dictionary containing slot state and a duplicated ItemData resource.
+func get_slot_data(index: int) -> Dictionary:
+	if not is_valid_slot(index):
+		return {}
+	var slot := _slots[index]
+	return {
+		"slot_index": index,
+		"is_empty": slot.is_empty(),
+		"quantity": slot.quantity,
+		"item_data": slot.item_data.duplicate(true) if slot.item_data else null
+	}
 
 
 func is_valid_slot(index: int) -> bool:
@@ -275,6 +294,7 @@ func swap_items(slot_a: int, slot_b: int) -> bool:
 
 
 ## Returns an immutable deep-copy snapshot of inventory slots.
+## Each ItemData resource is duplicated to prevent external mutations.
 func get_inventory_snapshot() -> Array[Dictionary]:
 	var snapshot: Array[Dictionary] = []
 	for i in range(_slots.size()):
@@ -282,10 +302,53 @@ func get_inventory_snapshot() -> Array[Dictionary]:
 		snapshot.append({
 			"slot_index": i,
 			"is_empty": slot.is_empty(),
-			"item_data": slot.item_data,
+			"item_data": slot.item_data.duplicate(true) if slot.item_data else null,
 			"quantity": slot.quantity
 		})
 	return snapshot
+
+
+## Atomically replaces the item in slot_index with new_item and returns the previous internal ItemData.
+## Official mutation API for external managers like EquipmentManager.
+func replace_slot_item(slot_index: int, new_item: ItemData, new_quantity: int = 1) -> ItemData:
+	if not is_valid_slot(slot_index):
+		return null
+	var slot := _slots[slot_index]
+	var old_item := slot.item_data
+	if new_item != null and new_quantity > 0:
+		slot.item_data = new_item
+		slot.quantity = new_quantity
+	else:
+		slot.clear()
+	slot_updated.emit(slot_index)
+	inventory_changed.emit()
+	var event_bus := _get_event_bus()
+	if event_bus and event_bus.has_signal("inventory_updated"):
+		event_bus.inventory_updated.emit()
+	return old_item
+
+
+## Atomically sets a slot's contents.
+func set_slot(slot_index: int, item_data: ItemData, quantity: int = 1) -> bool:
+	if not is_valid_slot(slot_index):
+		return false
+	var slot := _slots[slot_index]
+	if item_data != null and quantity > 0:
+		slot.item_data = item_data
+		slot.quantity = quantity
+	else:
+		slot.clear()
+	slot_updated.emit(slot_index)
+	inventory_changed.emit()
+	var event_bus := _get_event_bus()
+	if event_bus and event_bus.has_signal("inventory_updated"):
+		event_bus.inventory_updated.emit()
+	return true
+
+
+## Atomically clears a specific slot.
+func clear_slot(slot_index: int) -> bool:
+	return set_slot(slot_index, null, 0)
 
 
 func clear_inventory() -> void:

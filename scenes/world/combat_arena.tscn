@@ -60,6 +60,7 @@ position = Vector2(0, 40)
 position = Vector2(-70, -20)
 enemy_id = &"dummy_slime_1"
 enemy_name = "Training Slime Alpha"
+exp_reward = 50
 
 [node name="DummySlime2" parent="YSortEntities" instance=ExtResource("4_enemy")]
 position = Vector2(70, -20)

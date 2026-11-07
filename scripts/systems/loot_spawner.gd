@@ -14,7 +14,8 @@ var loot_tables: Dictionary = {} # StringName -> LootTable
 var exp_rewards: Dictionary = {} # StringName -> int
 
 var rng: RandomNumberGenerator = null
-var _processed_defeats: Dictionary = {} # StringName -> int (timestamp or count)
+var _processed_instance_ids: Dictionary = {} # int (enemy_instance_id) -> int (timestamp)
+var _processed_fallback_events: Dictionary = {} # StringName -> int (timestamp)
 
 static var instance: LootSpawner = null
 
@@ -34,7 +35,6 @@ func _ready() -> void:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 
-	_register_default_tables()
 	_connect_event_bus()
 
 
@@ -46,17 +46,10 @@ func set_rng(custom_rng: RandomNumberGenerator) -> void:
 	rng = custom_rng
 
 
-func register_loot_table(enemy_id: StringName, table: LootTable, exp_reward: int = 35) -> void:
+func register_loot_table(enemy_id: StringName, table: LootTable, exp_reward: int = 0) -> void:
 	loot_tables[enemy_id] = table
-	exp_rewards[enemy_id] = exp_reward
-
-
-func _register_default_tables() -> void:
-	var slime_loot: LootTable = load("res://resources/enemies/dummy_slime_loot.tres") as LootTable
-	if slime_loot:
-		register_loot_table(&"dummy_slime", slime_loot, 35)
-		register_loot_table(&"dummy_slime_1", slime_loot, 35)
-		register_loot_table(&"dummy_slime_2", slime_loot, 35)
+	if exp_reward > 0:
+		exp_rewards[enemy_id] = exp_reward
 
 
 func _connect_event_bus() -> void:
@@ -81,51 +74,68 @@ func _on_enemy_defeated(enemy_id: StringName) -> void:
 		if not players.is_empty() and players[0] is Node2D:
 			spawn_pos = (players[0] as Node2D).global_position + Vector2(20, 0)
 
-	_process_defeat(enemy_id, spawn_pos)
+	_process_defeat(enemy_id, spawn_pos, 0, null, 0)
 
 
-func _on_enemy_defeated_at(enemy_id: StringName, world_pos: Vector2) -> void:
-	_process_defeat(enemy_id, world_pos)
+func _on_enemy_defeated_at(enemy_id: StringName, world_pos: Vector2, exp_reward: int = 0, loot_table: LootTable = null, enemy_instance_id: int = 0) -> void:
+	_process_defeat(enemy_id, world_pos, exp_reward, loot_table, enemy_instance_id)
 
 
-func _process_defeat(enemy_id: StringName, world_pos: Vector2) -> void:
-	# Anti-duplicate guard: each specific defeat emission can only trigger once per physics tick
+func _process_defeat(enemy_id: StringName, world_pos: Vector2, exp_amount: int = 0, table: LootTable = null, enemy_instance_id: int = 0) -> void:
 	var current_ticks := Time.get_ticks_msec()
-	if _processed_defeats.has(enemy_id):
-		var last_time: int = _processed_defeats[enemy_id]
-		# If the same enemy_id was processed within 200ms, ignore duplicate
-		if current_ticks - last_time < 200:
-			return
 
-	_processed_defeats[enemy_id] = current_ticks
+	# Anti-duplicate guard by enemy instance ID
+	if enemy_instance_id != 0:
+		if _processed_instance_ids.has(enemy_instance_id):
+			return # Already processed this specific enemy instance!
+		_processed_instance_ids[enemy_instance_id] = current_ticks
+		if _processed_instance_ids.size() > 100:
+			_prune_processed_defeats(current_ticks)
+	else:
+		if _processed_fallback_events.has(enemy_id):
+			var last_time: int = _processed_fallback_events[enemy_id]
+			if current_ticks - last_time < 200:
+				return
+		_processed_fallback_events[enemy_id] = current_ticks
 
-	# 1. Distribute EXP reward
-	var exp_amount: int = exp_rewards.get(enemy_id, 35)
-	# Also check base enemy type key (e.g. dummy_slime_1 -> dummy_slime)
-	if not exp_rewards.has(enemy_id):
-		var base_key := StringName(String(enemy_id).split("_")[0] + "_" + String(enemy_id).split("_")[1]) if String(enemy_id).count("_") >= 2 else enemy_id
-		exp_amount = exp_rewards.get(base_key, 35)
+	# 1. Distribute EXP reward (only if configured or registered)
+	var final_exp := exp_amount
+	if final_exp <= 0 and exp_rewards.has(enemy_id):
+		final_exp = int(exp_rewards[enemy_id])
 
-	var stats := CharacterStats.get_default()
-	if stats:
-		stats.add_experience(exp_amount)
-	exp_awarded.emit(enemy_id, exp_amount)
+	if final_exp > 0:
+		var stats := CharacterStats.get_default()
+		if stats:
+			stats.add_experience(final_exp)
+		exp_awarded.emit(enemy_id, final_exp)
 
-	# 2. Spawn Loot
-	spawn_loot_for_enemy(enemy_id, world_pos)
+	# 2. Spawn Loot (only if table provided or registered)
+	var final_table: LootTable = table
+	if final_table == null and loot_tables.has(enemy_id):
+		final_table = loot_tables[enemy_id] as LootTable
+
+	if final_table:
+		spawn_loot_from_table(enemy_id, world_pos, final_table)
+
+
+func _prune_processed_defeats(current_ticks: int) -> void:
+	var to_remove: Array[int] = []
+	for id in _processed_instance_ids.keys():
+		if current_ticks - _processed_instance_ids[id] > 30000:
+			to_remove.append(id)
+	for id in to_remove:
+		_processed_instance_ids.erase(id)
 
 
 func spawn_loot_for_enemy(enemy_id: StringName, world_pos: Vector2) -> Array[WorldItem]:
-	var spawned_items: Array[WorldItem] = []
-
 	var table: LootTable = loot_tables.get(enemy_id, null)
 	if not table:
-		# Check prefix key fallback
-		for key in loot_tables.keys():
-			if String(enemy_id).begins_with(String(key)):
-				table = loot_tables[key]
-				break
+		return []
+	return spawn_loot_from_table(enemy_id, world_pos, table)
 
+
+func spawn_loot_from_table(enemy_id: StringName, world_pos: Vector2, table: LootTable) -> Array[WorldItem]:
+	var spawned_items: Array[WorldItem] = []
 	if not table:
 		return spawned_items
 

@@ -42,3 +42,4 @@ func get_slot_name() -> String:
 			return "Accessory"
 		_:
 			return "Unknown"
+

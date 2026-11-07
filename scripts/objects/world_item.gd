@@ -23,6 +23,7 @@ signal picked_up(item_data: ItemData, quantity: int)
 
 var _elapsed: float = 0.0
 var _is_picked_up: bool = false
+var _is_processing_pickup: bool = false
 var _base_sprite_y: float = -6.0
 
 
@@ -92,9 +93,10 @@ func _on_interacted(player: Player) -> void:
 
 
 ## Attempts to collect this item into inventory.
-## Guarantees single pickup execution and stays in world if inventory is full.
+## Supports partial pickup: inserts as many items as inventory capacity allows.
+## Remains in the world if inventory is completely full or if partial quantity remains.
 func pickup(collector: Node2D = null) -> bool:
-	if _is_picked_up or _elapsed < pickup_cooldown:
+	if _is_picked_up or _is_processing_pickup or _elapsed < pickup_cooldown:
 		return false
 
 	if item_data == null or quantity <= 0:
@@ -109,17 +111,24 @@ func pickup(collector: Node2D = null) -> bool:
 	if not inv:
 		return false
 
-	if not inv.can_fit_item(item_data, quantity):
-		# Inventory cannot accommodate this item: remain in world safely
+	_is_processing_pickup = true
+
+	var available := inv.get_available_space_for(item_data)
+	if available <= 0:
+		_is_processing_pickup = false
 		var event_bus := get_node_or_null("/root/EventBus")
 		if event_bus and event_bus.has_signal("show_floating_text"):
 			event_bus.show_floating_text.emit("Tas Penuh!", global_position + Vector2(0, -12), Color(1.0, 0.35, 0.35))
 		return false
 
-	# Single-pickup lock
-	_is_picked_up = true
+	# Add as many items as can fit (partial insertion)
+	var to_insert := mini(quantity, available)
+	var added := inv.add_item(item_data, to_insert)
+	if added <= 0:
+		_is_processing_pickup = false
+		return false
 
-	var added := inv.add_item(item_data, quantity)
+	quantity -= added
 	picked_up.emit(item_data, added)
 
 	var event_bus := get_node_or_null("/root/EventBus")
@@ -127,18 +136,25 @@ func pickup(collector: Node2D = null) -> bool:
 		var rarity_col := item_data.get_rarity_color()
 		event_bus.show_floating_text.emit("+%d %s" % [added, item_data.item_name], global_position + Vector2(0, -14), rarity_col)
 
-	# Visual collection feedback tween
-	if is_inside_tree():
-		var tween := create_tween()
-		if tween:
-			tween.set_parallel(true)
-			tween.tween_property(self, "position:y", position.y - 12.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			tween.tween_property(self, "scale", Vector2(0.1, 0.1), 0.2)
-			tween.tween_property(self, "modulate:a", 0.0, 0.2)
-			tween.chain().tween_callback(queue_free)
+	if quantity <= 0:
+		# Entire stack collected -> clean up entity
+		_is_picked_up = true
+		if is_inside_tree():
+			var tween := create_tween()
+			if tween:
+				tween.set_parallel(true)
+				tween.tween_property(self, "position:y", position.y - 12.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				tween.tween_property(self, "scale", Vector2(0.1, 0.1), 0.2)
+				tween.tween_property(self, "modulate:a", 0.0, 0.2)
+				tween.chain().tween_callback(queue_free)
+			else:
+				queue_free()
 		else:
 			queue_free()
 	else:
-		queue_free()
+		# Partial pickup: remainder stays in world
+		_is_processing_pickup = false
+		_elapsed = 0.0 # reset cooldown before next pickup attempt
 
 	return true
+

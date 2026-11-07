@@ -206,7 +206,7 @@ Hanya terdapat **5 Autoload inti** yang diizinkan untuk mencegah ketergantungan 
    * `item_equipped(slot: StringName, item: EquipmentData)`
    * `quest_status_changed(quest_id: StringName, status: int)`
    * `enemy_defeated(enemy_id: StringName)`
-   * `enemy_defeated_at(enemy_id: StringName, world_pos: Vector2, exp_reward: int, loot_table: Resource)`
+   * `enemy_defeated_at(enemy_id: StringName, world_pos: Vector2, exp_reward: int, loot_table: LootTable, enemy_instance_id: int)`
    * `show_floating_text(text: String, world_position: Vector2, color: Color)`
 
 2. **`GameManager.gd`**
@@ -292,9 +292,8 @@ Resource
   * `ItemType.QUEST` (Item cerita/tugas kampus)
 * **`EquipmentSlot`**:
   * `EquipmentSlot.WEAPON` ("weapon")
-  * `EquipmentSlot.BODY` ("body")
-  * `EquipmentSlot.PANTS` ("pants")
   * `EquipmentSlot.HEAD` ("head")
+  * `EquipmentSlot.BODY` ("body")
   * `EquipmentSlot.ACCESSORY` ("accessory")
 * **`Rarity`**:
   * `COMMON` (Warna `#FFFFFF` / Putih)
@@ -309,14 +308,15 @@ Resource
   * **Stack Merging & Overflow:** Menambah item stackable mencari slot eksisting terlebih dahulu hingga `max_stack`; sisa overflow dialokasikan ke slot kosong baru. Item non-stackable diisolasi 1 per slot.
   * **Partial Insertion:** Menghitung total kapasitas tersisa terlebih dahulu; item dimasukkan sebanyak mungkin dan mengembalikan sisa yang gagal masuk tanpa merusak state internal.
   * **Atomic Move & Swap:** Operasi pemindahan antar slot bersifat atomik (`swap_slots(from, to)`). Penggabungan stack sejenis terjadi otomatis jika tipe item identik dan kapasitas slot target mencukupi.
-  * **Snapshot Safety:** Method `get_slots_snapshot()` mengembalikan duplikat deep-copy dari array slot sehingga UI atau sistem lain tidak dapat memutasi state inventory secara tidak sengaja.
+  * **Snapshot & Reading Safety:** Method `get_inventory_snapshot()` dan `get_slot_data()` menduplikasi resource `ItemData` (`duplicate(true)`) dan mengekspor struktur dictionary/slot terisolasi, sehingga UI dan sistem luar tidak dapat memutasi data inventory maupun resource internal secara tidak sengaja.
+  * **Official Mutation API:** Modifikasi eksternal dilakukan melalui API resmi `InventoryManager` (`replace_slot_item`, `set_slot`, `clear_slot`, `add_item`, `remove_item`).
   * **Event Notification:** Memancarkan sinyal `inventory_changed`, `item_added`, dan `item_removed`.
 
 ### 6.4 Equipment Architecture (`EquipmentManager`)
-* **Slot Mapping:** Mengelola 5 slot terdedikasi (`weapon`, `body`, `pants`, `head`, `accessory`).
+* **Slot Mapping:** Mengelola 4 slot terdedikasi (`weapon`, `head`, `body`, `accessory`).
 * **Atomic Equip / Unequip / Swap:**
-  * `equip_item_from_inventory(slot_index)`: Memasang equipment, dan jika slot sudah terisi, equipment lama ditukar langsung ke slot inventaris asal secara in-place.
-  * `unequip_item(equipment_slot)`: Melepas equipment dan mengembalikannya ke inventaris. Ditolak aman (return `false`) jika inventaris 100% penuh tanpa menghilangkan item.
+  * `equip_item_from_inventory(slot_index)`: Memasang equipment secara atomik melalui `InventoryManager.replace_slot_item()`. Jika slot sudah terisi, equipment lama ditukar langsung ke slot inventaris asal secara in-place.
+  * `unequip_item(equipment_slot)`: Melepas equipment dan mengembalikannya ke inventaris. Ditolak aman (return `false`) jika inventaris 100% penuh tanpa menghilangkan item (*zero item loss*).
 * **Integrasi Modular Visuals:** Memasang atau melepas perlengkapan langsung menyinkronkan layer visual (`ModularVisuals.set_layer_texture()`) dan memicu `stats.recalculate()`.
 
 ### 6.5 Progression & Character Stats (`CharacterStats`)
@@ -327,18 +327,19 @@ Resource
   * $\text{Speed} = \text{base\_move\_speed} + \text{equipment\_speed}$
 * **Max HP Clamping:** Penurunan Max HP (saat unequip) meng-clamp `current_health` agar tidak melebihi batas baru, namun peningkatan Max HP tidak menambah darah instan (*anti auto-heal exploit*).
 * **EXP & Level Up Formula:**
-  * Formula EXP kebutuhan: $\text{Required EXP} = \text{int}(100 \times \text{level}^{1.2})$
+  * Formula EXP kebutuhan: $\text{Required EXP} = \text{int}(100 \times \text{level}^{1.4})$
   * Mendukung akumulasi EXP multi-level dalam satu event pertarungan (*overflow handling*).
-  * Menghadiahkan 3 Stat Point per level baru untuk dialokasikan bebas oleh pemain ke HP (+10), ATK (+1), atau DEF (+1).
+  * Menghadiahkan 3 Stat Point per level baru untuk dialokasikan bebas oleh pemain ke HP (+10), ATK (+2), atau DEF (+1).
 
 ### 6.6 Loot Drop & Ground Item Architecture (`LootTable`, `LootSpawner`, `WorldItem`)
 * **LootTable & LootDropEntry:** Mendukung evaluasi peluang mandiri (*independent drop chance* $0.0 - 1.0$) serta evaluasi kolam berbobot (*weighted random drop pool*). Dilengkapi injeksi RNG untuk pengujian runtime yang deterministik.
-* **LootSpawner:** Berada di level scene mendengarkan `EventBus.enemy_defeated_at`. Secara otomatis mendistribusikan EXP ke `CharacterStats` pemain dan mengeksekusi instansiasi drop item di koordinat musuh secara deferred.
+* **LootSpawner:** Berada di level scene mendengarkan `EventBus.enemy_defeated_at(enemy_id, position, exp_reward, loot_table, enemy_instance_id)`. Deduplikasi didasarkan pada `enemy_instance_id` (mencegah double reward pada instance musuh yang sama, namun tetap memberikan reward penuh untuk dua musuh berbeda ber-`enemy_id` sama yang mati hampir bersamaan).
 * **WorldItem (`scenes/objects/world_item.tscn`):**
   * Entitas fisik dunia turunan `Area2D` di Layer 8 (Interactables).
   * Animasi floating/bobbing sinusoidal ringan pada sprite 16x16.
   * Mendukung pengambilan otomatis saat bersentuhan (`_on_body_entered`) serta interaksi manual.
-  * Dilengkapi flag `_is_collected` anti re-entrancy ganda (single-pickup lock).
+  * Mendukung pengambilan parsial (*partial pickup*): item masuk sebanyak kapasitas ransel tersisa, sisa kuantitas tetap berada di dunia, dan entitas hanya di-free jika `quantity <= 0`.
+  * Dilengkapi flag `_is_processing_pickup` anti re-entrancy ganda dalam frame yang sama.
   * **Ground Rejection:** Jika inventaris pemain penuh, item tetap berada di tanah dan tidak hilang/musnah.
 
 ---

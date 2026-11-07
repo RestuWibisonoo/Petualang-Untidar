@@ -23,6 +23,8 @@ func _run_runtime_suite() -> void:
 	await test_runtime_equipment_and_combat_impact()
 	await test_runtime_exp_gain_and_level_up()
 	await test_runtime_full_inventory_pickup_rejection()
+	await test_runtime_partial_pickup_and_remainder()
+	await test_runtime_dual_enemy_defeat_same_id()
 	await test_runtime_ui_toggle_and_sync()
 
 	_print_summary()
@@ -65,6 +67,8 @@ func test_runtime_enemy_defeat_and_loot_spawn() -> void:
 	var test_table := LootTable.new()
 	var jelly_res: ItemData = load("res://resources/items/slime_jelly.tres") as ItemData
 	test_table.entries.append(LootDropEntry.new(jelly_res, 1.0, 2, 2, 100))
+	enemy.loot_table = test_table
+	enemy.exp_reward = 40
 	spawner.register_loot_table(enemy.enemy_id, test_table, 40)
 
 	# Position player right in front of enemy
@@ -218,6 +222,7 @@ func test_runtime_exp_gain_and_level_up() -> void:
 		arena.add_child(spawner)
 
 	# Register enemy EXP reward
+	enemy.exp_reward = 50
 	spawner.exp_rewards[enemy.enemy_id] = 50
 
 	player.character_stats.reset_all()
@@ -291,8 +296,117 @@ func test_runtime_full_inventory_pickup_rejection() -> void:
 	await _wait_physics_frames(2)
 
 
+func test_runtime_partial_pickup_and_remainder() -> void:
+	print("\n--- 6. Testing Runtime Partial Pickup & Remainder Collection ---")
+
+	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
+	var arena: CombatArena = arena_scene.instantiate() as CombatArena
+	get_root().add_child(arena)
+	await _wait_physics_frames(4)
+
+	var player: Player = arena.player
+	player.global_position = Vector2(0, 0)
+	player.inventory_manager.clear_inventory()
+
+	# Fill 19 slots with swords, and 1 slot with 16 potions (so exactly 4 spaces remain)
+	var sword_res: ItemData = load("res://resources/equipment/wooden_sword.tres") as ItemData
+	for i in range(19):
+		player.inventory_manager.add_item(sword_res, 1)
+	var potion_res: ItemData = load("res://resources/items/health_potion.tres") as ItemData
+	player.inventory_manager.add_item(potion_res, 16)
+
+	_assert_test(player.inventory_manager.get_available_space_for(potion_res) == 4, "Inventory has exactly 4 spaces for potions")
+
+	# Drop WorldItem with 10 potions at (32, 0)
+	var world_item_scene: PackedScene = load("res://scenes/objects/world_item.tscn")
+	var ground_item: WorldItem = world_item_scene.instantiate() as WorldItem
+	ground_item.item_data = potion_res
+	ground_item.quantity = 10
+	ground_item.pickup_cooldown = 0.05
+	ground_item.global_position = Vector2(32, 0)
+	arena.get_node("YSortEntities").add_child(ground_item)
+	await _wait_physics_frames(3)
+
+	# Move player toward ground item to trigger physical partial pickup
+	player.global_position = Vector2(32, 0)
+	await _wait_physics_frames(8)
+
+	_assert_test(player.inventory_manager.get_item_count(&"health_potion") == 20, "Inventory received 4 potions via partial physical pickup (filled slot to 20)")
+	_assert_test(ground_item.quantity == 6, "Ground item retained 6 remaining potions (10 - 4 = 6)")
+	_assert_test(not ground_item._is_picked_up and is_instance_valid(ground_item), "Ground item still active in world after partial pickup")
+
+	# Clear swords to make room for remaining 6 potions
+	for i in range(19):
+		player.inventory_manager.clear_slot(i)
+
+	# Pickup remaining 6 potions
+	ground_item.pickup_cooldown = 0.0
+	ground_item.pickup(player)
+	await _wait_physics_frames(6)
+
+	_assert_test(player.inventory_manager.get_item_count(&"health_potion") == 26, "Inventory received remaining 6 potions (total 26)")
+	_assert_test(ground_item.quantity == 0, "Ground item quantity reached 0")
+
+	arena.queue_free()
+	await _wait_physics_frames(2)
+
+
+func test_runtime_dual_enemy_defeat_same_id() -> void:
+	print("\n--- 7. Testing Runtime Dual Enemy Defeat with Same Enemy ID ---")
+
+	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
+	var arena: CombatArena = arena_scene.instantiate() as CombatArena
+	get_root().add_child(arena)
+	await _wait_physics_frames(4)
+
+	var player: Player = arena.player
+	player.character_stats.reset_all()
+
+	var spawner: LootSpawner = arena.get_node_or_null("LootSpawner") as LootSpawner
+	if not spawner:
+		spawner = LootSpawner.new()
+		spawner.name = "LootSpawner"
+		arena.add_child(spawner)
+
+	var slime_scene: PackedScene = load("res://scenes/enemy/base_enemy.tscn")
+	var enemy_a: BaseEnemy = slime_scene.instantiate() as BaseEnemy
+	var enemy_b: BaseEnemy = slime_scene.instantiate() as BaseEnemy
+
+	enemy_a.enemy_id = &"shared_slime"
+	enemy_b.enemy_id = &"shared_slime"
+	enemy_a.exp_reward = 30
+	enemy_b.exp_reward = 30
+
+	var test_loot := LootTable.new()
+	var jelly_res: ItemData = load("res://resources/items/slime_jelly.tres") as ItemData
+	test_loot.entries.append(LootDropEntry.new(jelly_res, 1.0, 1, 1, 100))
+	enemy_a.loot_table = test_loot
+	enemy_b.loot_table = test_loot
+
+	enemy_a.global_position = Vector2(-20, 0)
+	enemy_b.global_position = Vector2(20, 0)
+
+	arena.get_node("YSortEntities").add_child(enemy_a)
+	arena.get_node("YSortEntities").add_child(enemy_b)
+	await _wait_physics_frames(3)
+
+	var inst_a := enemy_a.get_instance_id()
+	var inst_b := enemy_b.get_instance_id()
+	_assert_test(inst_a != inst_b, "Two runtime enemies have distinct instance IDs")
+
+	# Kill both enemies in close succession
+	enemy_a._on_died()
+	enemy_b._on_died()
+	await _wait_physics_frames(6)
+
+	_assert_test(player.character_stats.current_exp == 60, "Both enemies with shared ID granted EXP (30 + 30 = 60)")
+
+	arena.queue_free()
+	await _wait_physics_frames(2)
+
+
 func test_runtime_ui_toggle_and_sync() -> void:
-	print("\n--- 6. Testing Runtime Inventory UI Toggle & Display Synchronization ---")
+	print("\n--- 8. Testing Runtime Inventory UI Toggle & Display Synchronization ---")
 
 	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
 	var arena: CombatArena = arena_scene.instantiate() as CombatArena

@@ -44,3 +44,4 @@ func get_remaining_space() -> int:
 func duplicate_slot() -> InventorySlot:
 	var dup := InventorySlot.new(item_data, quantity)
 	return dup
+

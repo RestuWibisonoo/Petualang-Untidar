@@ -79,28 +79,20 @@ func equip_from_inventory(slot_index: int) -> bool:
 	if not inv or not inv.is_valid_slot(slot_index):
 		return false
 
-	var inv_slot := inv.get_slot(slot_index)
-	if inv_slot.is_empty() or not (inv_slot.item_data is EquipmentData):
+	var slot_data := inv.get_slot_data(slot_index)
+	if slot_data.is_empty() or slot_data.get("is_empty", true) or not (slot_data.get("item_data") is EquipmentData):
 		return false
 
-	var new_equip := inv_slot.item_data as EquipmentData
-	var target_slot := new_equip.equipment_slot
+	var new_equip_preview := slot_data["item_data"] as EquipmentData
+	var target_slot := new_equip_preview.equipment_slot
 	var old_equip := get_equipped_item(target_slot)
 
-	# Atomic Swap:
-	if old_equip != null:
-		# Place old equipment into the slot that held new equipment
-		inv_slot.item_data = old_equip
-		inv_slot.quantity = 1
-	else:
-		# Clear slot since target equipment slot was empty
-		inv_slot.clear()
+	# Atomic Swap via InventoryManager official mutation API:
+	var new_equip := inv.replace_slot_item(slot_index, old_equip, 1) as EquipmentData
+	if not new_equip:
+		return false
 
 	_equipped_items[target_slot] = new_equip
-
-	inv.slot_updated.emit(slot_index)
-	inv.inventory_changed.emit()
-
 	_on_equipment_updated(target_slot, new_equip)
 	return true
 

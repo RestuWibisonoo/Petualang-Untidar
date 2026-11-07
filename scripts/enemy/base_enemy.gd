@@ -18,6 +18,8 @@ signal defeated(enemy_id: StringName, position: Vector2)
 @export var attack_cooldown: float = 1.0
 @export var base_damage: int = 10
 @export var knockback_force: float = 100.0
+@export var exp_reward: int = 0
+@export var loot_table: LootTable = null
 
 @onready var sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 @onready var collision_shape: CollisionShape2D = get_node_or_null("CollisionShape2D") as CollisionShape2D
@@ -207,11 +209,12 @@ func _on_died() -> void:
 
 	# Single emission of enemy_defeated
 	var pos := global_position
+	var inst_id := get_instance_id()
 	defeated.emit(enemy_id, pos)
 	var event_bus := get_node_or_null("/root/EventBus")
 	if event_bus:
 		if event_bus.has_signal("enemy_defeated_at"):
-			event_bus.enemy_defeated_at.emit(enemy_id, pos)
+			event_bus.enemy_defeated_at.emit(enemy_id, pos, exp_reward, loot_table, inst_id)
 		if event_bus.has_signal("enemy_defeated"):
 			event_bus.enemy_defeated.emit(enemy_id)
 

@@ -328,3 +328,4 @@ layout_mode = 2
 [node name="BottomMargin" type="Control" parent="MainPanel/PanelContainer/VBox"]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
+

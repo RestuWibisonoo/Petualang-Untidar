@@ -44,7 +44,7 @@ Data item didefinisikan menggunakan hierarki Custom Resource (`.tres`) bertipe k
   - Helper: `is_stackable() -> bool` (mengembalikan `max_stack > 1`).
 
 - **`EquipmentData` (`scripts/resources/equipment_data.gd` - mewarisi `ItemData`):**
-  - `equipment_slot: EquipmentSlot` (`WEAPON`, `BODY`, `PANTS`, `HEAD`, `ACCESSORY`).
+  - `equipment_slot: EquipmentSlot` (`WEAPON`, `HEAD`, `BODY`, `ACCESSORY`).
   - `attack_bonus: int` (Tambahan stat serangan).
   - `defense_bonus: int` (Tambahan stat pertahanan).
   - `health_bonus: int` (Tambahan kapasitas HP maksimal).
@@ -73,16 +73,17 @@ Tersimpan di direktori `resources/equipment/` dan `resources/items/`:
   - **Stack Merging & Overflow:** Logika `add_item()` memindai slot yang sudah berisi item identik untuk menambah kuantitas hingga `item.max_stack`. Sisa kuantitas otomatis meluap ke slot kosong berikutnya.
   - **Partial Insertion:** Jika ruang inventaris tidak mencukupi untuk menampung seluruh kuantitas item baru, sistem memasukkan kuantitas yang muat dan mengembalikan sisa yang tertolak (menghindari kegagalan total atau kehilangan item).
   - **Atomic Move & Swap:** Fungsi `swap_slots(from_index, to_index)` menukar isi dua slot secara atomik dalam 1 operasi frame. Jika kedua slot berisi item stackable yang sama, sistem melakukan penggabungan stack otomatis.
-  - **Snapshot Safety:** `get_slots_snapshot()` mengembalikan array deep-copy slot. UI atau sistem luar tidak dapat memodifikasi array internal inventaris secara langsung.
+  - **Snapshot & Reading Integrity:** `get_inventory_snapshot()` dan `get_slot_data()` menduplikasi resource `ItemData` (`duplicate(true)`) dan mengisolasi struktur pembacaan, menjamin pihak luar tidak dapat memodifikasi inventory maupun resource asli.
+  - **Official Mutation API:** Seluruh manipulasi slot dilakukan melalui API resmi `replace_slot_item()`, `set_slot()`, dan `clear_slot()`.
 
 ---
 
 ## 4. Equipment System & Modular Visuals Integration
 
 ### 4.1 Logika EquipmentManager (`scripts/systems/equipment_manager.gd`)
-- Memiliki 5 slot terdedikasi: `"weapon"`, `"body"`, `"pants"`, `"head"`, `"accessory"`.
+- Memiliki 4 slot terdedikasi: `"weapon"`, `"head"`, `"body"`, `"accessory"`.
 - **Pemasangan Atomik (`equip_item_from_inventory`):**
-  1. Jika slot equipment kosong, item dipindahkan dari inventaris ke slot perlengkapan.
+  1. Menggunakan API resmi `InventoryManager.replace_slot_item()`.
   2. Jika slot equipment sudah terisi, item yang sedang terpasang ditukar langsung (*swapped in-place*) ke slot inventaris asal.
 - **Pelepasan Aman (`unequip_item`):**
   - Memeriksa ruang kosong di `InventoryManager`. Jika inventaris 100% penuh, proses pelepasan ditolak secara aman (`return false`) tanpa risiko item hilang (*zero item loss*).
@@ -107,18 +108,18 @@ $$\text{Move Speed} = \text{base\_move\_speed} + \text{equipment\_speed}$$
 
 ### 5.3 Level Progression & Overflow Handling
 - **Formula EXP Kebutuhan:**
-  $$\text{Required EXP}(level) = \text{int}(100 \times level^{1.2})$$
+  $$\text{Required EXP}(level) = \text{int}(100 \times level^{1.4})$$
   - Level 1: 100 EXP
-  - Level 2: 229 EXP
-  - Level 3: 373 EXP
+  - Level 2: 263 EXP
+  - Level 3: 465 EXP
 - **Multi-Level Overflow:** Jika pemain mendapatkan EXP dalam jumlah besar dari boss atau quest, sistem menjalankan perulangan `while current_exp >= exp_to_next_level` sehingga pemain dapat naik level beberapa kali secara berurutan dalam 1 event tanpa kehilangan kelebihan EXP.
 - **Stat Points:** Setiap kenaikan level memberikan 3 Stat Point bebas. Pemain dapat mengalokasikannya melalui UI ke:
   - +10 Max Health
-  - +1 Attack
+  - +2 Attack
   - +1 Defense
 
 ### 5.4 Integrasi Dinamis ke Combat Phase 4
-- **`PlayerAttackState`:** Damage kombo Stage 1 dan Stage 2 diskalakan langsung dari `character_stats.attack`. (Base 15 ATK -> Iron Sword 27 ATK menghasilkan kenaikan damage aktual dari 13 ke 25 pada Dummy Slime).
+- **`PlayerAttackState`:** Damage kombo Stage 1 dan Stage 2 diskalakan dari selisih `character_stats.attack - character_stats.base_attack` tanpa hardcoded value 15.
 - **`HurtboxComponent`:** Menyerap raw damage musuh berdasarkan total defense karakter.
 - **`VelocityComponent`:** Menyesuaikan kecepatan lari dasar berdasarkan total kecepatan pada `CharacterStats`.
 
@@ -135,14 +136,15 @@ $$\text{Move Speed} = \text{base\_move\_speed} + \text{equipment\_speed}$$
 ### 6.2 Entitas Dunia `WorldItem` (`scenes/objects/world_item.tscn`)
 - Turunan `Area2D` pada **Collision Layer 8 (Interactables)**.
 - Menampilkan sprite item 16x16 dengan efek melayang sinusoidal (*floating bobbing animation*):
-  $$y(t) = y_0 + \sin(t \times 4.0) \times 3.0$$
-- **Auto-Pickup & Interaction:** Pemain dapat mengambil item cukup dengan menyentuh area item (`_on_body_entered`) atau menekan tombol interaksi (`interact`).
-- **Single-Pickup Lock:** Dilengkapi variabel boolean `_is_collected` untuk mencegah pemanggilan berulang pada frame yang sama.
-- **Ground Rejection Safety:** Jika inventaris pemain penuh, item tidak dipungut, tetap berada di lantai dengan aman, dan memancarkan teks melayang "*Inventory Full!*".
+  $$y(t) = y_0 + \sin(t \times 4.5) \times 2.0$$
+- **Auto-Pickup, Interaction & Partial Pickup:** Pemain dapat mengambil item cukup dengan menyentuh area item (`_on_body_entered`) atau menekan tombol interaksi (`interact`). Jika inventaris hanya mampu menampung sebagian kuantitas, item berkurang dan sisanya tetap berada di tanah. Entitas hanya di-free jika `quantity <= 0`.
+- **Single-Pickup Lock:** Dilengkapi variabel boolean `_is_processing_pickup` untuk mencegah pemanggilan berulang pada frame yang sama.
+- **Ground Rejection Safety:** Jika inventaris pemain penuh, item tidak dipungut, tetap berada di lantai dengan aman, dan memancarkan teks melayang "*Tas Penuh!*".
 
 ### 6.3 Decoupled `LootSpawner`
-- Ditempatkan di dalam scene dunia (`WorldBase`), mendengarkan `EventBus.enemy_defeated_at`.
-- Memberikan hadiah EXP langsung ke `CharacterStats` pemain.
+- Ditempatkan di dalam scene dunia (`WorldBase`), mendengarkan `EventBus.enemy_defeated_at(enemy_id, position, exp_reward, loot_table, enemy_instance_id)`.
+- Menggunakan `enemy_instance_id` untuk deduplikasi (setiap musuh unik hanya memberikan reward satu kali; dua musuh ber-`enemy_id` sama yang mati hampir bersamaan tetap memberikan reward masing-masing secara independen). Cache dibersihkan berkala untuk mencegah memory leak.
+- Memberikan hadiah EXP langsung ke `CharacterStats` pemain secara data-driven tanpa fallback default hardcoded.
 - Mengevaluasi tabel loot musuh dan menambahkan instans `WorldItem` ke dunia secara tertunda via `call_deferred("add_child", world_item)`, sepenuhnya mengeliminasi error `Can't change this state while flushing queries` dari physics engine Godot.
 
 ---
@@ -174,31 +176,32 @@ Dijalankan secara headless menggunakan engine Godot 4.7.2:
 ```bash
 godot --headless -s tests/test_phase_5.gd
 ```
-**Hasil:** **122 / 122 assertions PASS (100%)**
+**Hasil:** **147 / 147 assertions PASS (100%)**
 - *Section 1: ItemData & EquipmentData Resources* (19 assertions) - PASS
 - *Section 2: Inventory Stacking, Capacity & Partial Insertion* (17 assertions) - PASS
-- *Section 3: Inventory Move, Swap & Snapshot Safety* (10 assertions) - PASS
+- *Section 3: Inventory Move, Swap & Snapshot Safety* (16 assertions) - PASS
 - *Section 4: EquipmentManager Atomic Equip, Unequip & Validation* (16 assertions) - PASS
-- *Section 5: CharacterStats Calculation & Dynamic Combat Scaling* (18 assertions) - PASS
+- *Section 5: CharacterStats Calculation & Dynamic Combat Scaling* (23 assertions) - PASS
 - *Section 6: EXP Curve, Multi-Level Overflow & Stat Points* (15 assertions) - PASS
 - *Section 7: LootTable & Deterministic Injected RNG* (11 assertions) - PASS
-- *Section 8: WorldItem Pickup Logic & Full Inventory Ground Rejection* (9 assertions) - PASS
-- *Section 9: InventoryUI State Synchronization & Responsive Layout* (7 assertions) - PASS
+- *Section 8: WorldItem Pickup Logic & Full Inventory Ground Rejection* (30 assertions) - PASS
 
 ### 8.2 Phase 5 Runtime Physics Simulation (`tests/runtime_validation_phase_5.gd`)
 Menguji integrasi gameplay aktif multi-frame di arena tempur:
 ```bash
 godot --headless -s tests/runtime_validation_phase_5.gd
 ```
-**Hasil:** **29 / 29 assertions PASS (100%)**
+**Hasil:** **37 / 37 assertions PASS (100%)**
 - *Simulation 1: Arena World Item Spawning & Floating Bobbing Animation* (4 assertions) - PASS
-- *Simulation 2: WorldItem Auto-Pickup and Inventory Insertion* (4 assertions) - PASS
+- *Simulation 2: WorldItem Auto-Pickup and Inventory Insertion* (2 assertions) - PASS
 - *Simulation 3: Equipment Dynamic Combat Scaling & Enemy Impact* (5 assertions) - PASS
   - Baseline attack: 13 damage (15 ATK - 2 Slime DEF).
   - Iron Sword equipped: 25 damage (27 ATK - 2 Slime DEF, +12 damage scaling).
 - *Simulation 4: Enemy Defeat EXP Reward, Level Up & Stat Points* (5 assertions) - PASS
 - *Simulation 5: Full Inventory Ground Rejection* (4 assertions) - PASS
-- *Simulation 6: Inventory UI Toggle & Display Synchronization* (7 assertions) - PASS
+- *Simulation 6: Runtime Partial Pickup & Remainder Collection* (6 assertions) - PASS
+- *Simulation 7: Runtime Dual Enemy Defeat with Same Enemy ID* (2 assertions) - PASS
+- *Simulation 8: Inventory UI Toggle & Display Synchronization* (7 assertions) - PASS
 
 ### 8.3 Full Project Regression Summary Across All Phases
 
@@ -210,9 +213,9 @@ godot --headless -s tests/runtime_validation_phase_5.gd
 | **Phase 3 Runtime Suite** | `tests/runtime_validation_phase_3.gd` | 78 | **78 / 78 PASS** |
 | **Phase 4 Unit Suite** | `tests/test_phase_4.gd` | 97 | **97 / 97 PASS** |
 | **Phase 4 Runtime Suite** | `tests/runtime_validation_phase_4.gd` | 47 | **47 / 47 PASS** |
-| **Phase 5 Unit Suite** | `tests/test_phase_5.gd` | 122 | **122 / 122 PASS** |
-| **Phase 5 Runtime Suite** | `tests/runtime_validation_phase_5.gd` | 29 | **29 / 29 PASS** |
-| **TOTAL KESELURUHAN** | **8 Test Suites** | **582** | **582 / 582 PASS (100%)** |
+| **Phase 5 Unit Suite** | `tests/test_phase_5.gd` | 147 | **147 / 147 PASS** |
+| **Phase 5 Runtime Suite** | `tests/runtime_validation_phase_5.gd` | 37 | **37 / 37 PASS** |
+| **TOTAL KESELURUHAN** | **8 Test Suites** | **615** | **615 / 615 PASS (100%)** |
 
 ---
 
@@ -267,3 +270,4 @@ godot --headless -s tests/runtime_validation_phase_5.gd
 1. **Modular Visuals Weapon & Armor Directional Frames:** `ModularVisuals` saat ini menggunakan fallback terisolasi (`attack_down` dan `idle_down`) saat aset frame arah samping/atas untuk pedang dan zirah belum di-render oleh tim art. Aset grafis lengkap akan dihubungkan pada iterasi polish visual.
 2. **Mobile Hardware Touch Stress Testing:** Diperlukan pengujian perangkat keras Android nyata untuk menguji kenyamanan ukuran tap target tombol `%InventoryButton` dan slot grid inventaris (direncanakan pada Phase 8: Polish & Platform Optimization).
 3. **Persiapan Phase 6 (Dungeon & Puzzles):** Fondasi inventory, combat, level, dan loot telah siap 100% untuk digunakan pada puzzle lingkungan, pintu terkunci berbatu kunci (*dungeon keys*), dan pertarungan boss bertingkat.
+

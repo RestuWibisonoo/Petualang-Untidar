@@ -16,7 +16,7 @@
 | **Phase 2** | Character Foundation | **COMPLETED** | 2 |
 | **Phase 3** | World & Exploration | **COMPLETED** | 3 |
 | **Phase 4** | Combat System | **COMPLETED** | 4 |
-| **Phase 5** | Loot & Progression | **PLANNED** | 5 |
+| **Phase 5** | Loot & Progression | **COMPLETED** | 5 |
 | **Phase 6** | Quest & Dungeon | **PLANNED** | 6 |
 | **Phase 7** | UI & Persistence | **PLANNED** | 7 |
 | **Phase 8** | Deployment & Optimization | **PLANNED** | 8 |

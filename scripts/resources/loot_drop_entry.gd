@@ -18,3 +18,4 @@ func _init(p_item: ItemData = null, p_chance: float = 0.5, p_min: int = 1, p_max
 	min_quantity = p_min
 	max_quantity = p_max
 	weight = p_weight
+

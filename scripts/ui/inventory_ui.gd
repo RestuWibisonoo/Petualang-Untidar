@@ -101,6 +101,8 @@ func _connect_managers() -> void:
 	if stats:
 		if not stats.stats_changed.is_connected(refresh_stats):
 			stats.stats_changed.connect(refresh_stats)
+		if not stats.health_changed.is_connected(func(_c, _m): refresh_stats()):
+			stats.health_changed.connect(func(_c, _m): refresh_stats())
 		if not stats.exp_changed.is_connected(func(_c, _m): refresh_stats()):
 			stats.exp_changed.connect(func(_c, _m): refresh_stats())
 

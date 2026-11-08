@@ -147,9 +147,16 @@ func _on_character_stats_changed() -> void:
 		character_stats.sync_with_player(self)
 
 
-func _on_health_component_changed(current: int, _max_val: int) -> void:
-	if character_stats and character_stats.current_health != current:
-		character_stats.current_health = current
+func _on_health_component_changed(current: int, max_val: int) -> void:
+	if character_stats:
+		character_stats.set_health_from_component(current, max_val)
+
+
+func heal(amount: int) -> void:
+	if health_component:
+		health_component.heal(amount)
+	elif character_stats:
+		character_stats.heal(amount)
 
 
 func get_movement_input() -> Vector2:

@@ -26,6 +26,7 @@ func _run_runtime_suite() -> void:
 	await test_runtime_partial_pickup_and_remainder()
 	await test_runtime_dual_enemy_defeat_same_id()
 	await test_runtime_ui_toggle_and_sync()
+	await test_runtime_health_potion_synchronization()
 
 	_print_summary()
 
@@ -434,6 +435,108 @@ func test_runtime_ui_toggle_and_sync() -> void:
 	inv_ui.close_ui()
 	await _wait_physics_frames(2)
 	_assert_test(not inv_ui.visible, "InventoryUI is closed after close_ui()")
+
+	arena.queue_free()
+	await _wait_physics_frames(2)
+
+
+func test_runtime_health_potion_synchronization() -> void:
+	print("\n--- 9. Testing Runtime Health Potion Synchronization & HP Invariants ---")
+
+	var arena_scene: PackedScene = load("res://scenes/world/combat_arena.tscn")
+	var arena: CombatArena = arena_scene.instantiate() as CombatArena
+	get_root().add_child(arena)
+	await _wait_physics_frames(4)
+
+	var player: Player = arena.player
+	var hud := arena.get_node_or_null("HUD")
+	var inv_ui: InventoryUI = hud.get_node_or_null("InventoryUI") as InventoryUI
+	if inv_ui:
+		inv_ui.open_ui()
+		await _wait_physics_frames(2)
+
+	var potion: ItemData = load("res://resources/items/health_potion.tres") as ItemData
+
+	# 1. Player begins with 100 HP
+	_assert_test(player.health_component.current_health == 100, "Step 1: HealthComponent starts at 100 HP")
+	_assert_test(player.character_stats.current_health == 100, "Step 1: CharacterStats starts at 100 HP")
+	_assert_test(player.health_component.max_health == 100, "Step 1: HealthComponent max_health is 100")
+	_assert_test(player.character_stats.max_health == 100, "Step 1: CharacterStats max_health is 100")
+
+	# Add 3 Health Potions to inventory
+	player.inventory_manager.add_item(potion, 3)
+	var initial_potions := player.inventory_manager.get_item_count(&"health_potion")
+	_assert_test(initial_potions == 3, "Inventory successfully stocked with 3 Health Potions")
+
+	# 2. Player receives damage down to 60 HP (40 damage applied)
+	player.health_component.take_damage(40)
+	await _wait_physics_frames(2)
+	_assert_test(player.health_component.current_health == 60, "Step 2: HealthComponent reduced to 60 HP")
+	_assert_test(player.character_stats.current_health == 60, "Step 2: CharacterStats synchronized to 60 HP")
+
+	# 3. Player consumes one Health Potion (+30 HP)
+	if inv_ui:
+		inv_ui._selected_slot_index = 0
+		inv_ui._on_equip_pressed()
+	else:
+		player.character_stats.heal(30)
+		player.inventory_manager.remove_item(&"health_potion", 1)
+	await _wait_physics_frames(2)
+
+	# 4. HealthComponent and CharacterStats show 90 HP
+	_assert_test(player.health_component.current_health == 90, "Step 4: HealthComponent shows 90 HP after potion heal")
+	_assert_test(player.character_stats.current_health == 90, "Step 4: CharacterStats shows 90 HP after potion heal")
+
+	# 5. One potion reduced from inventory
+	_assert_test(player.inventory_manager.get_item_count(&"health_potion") == initial_potions - 1, "Step 5: Exactly 1 potion deducted from inventory")
+
+	# 7. Using potion cannot produce HP exceeding Max Health (90 + 30 = 120 -> clamped to 100)
+	if inv_ui:
+		inv_ui._selected_slot_index = 0
+		inv_ui._on_equip_pressed()
+	else:
+		player.character_stats.heal(30)
+		player.inventory_manager.remove_item(&"health_potion", 1)
+	await _wait_physics_frames(2)
+	_assert_test(player.health_component.current_health == 100, "Step 7: HealthComponent clamped to Max Health (100 HP, cannot exceed 100)")
+	_assert_test(player.character_stats.current_health == 100, "Step 7: CharacterStats clamped to Max Health (100 HP, cannot exceed 100)")
+
+	# 6. Using potion when HP is full does not change HP
+	var hp_before_full := player.health_component.current_health
+	if inv_ui:
+		inv_ui._selected_slot_index = 0
+		inv_ui._on_equip_pressed()
+	else:
+		player.character_stats.heal(30)
+	await _wait_physics_frames(2)
+	_assert_test(player.health_component.current_health == hp_before_full, "Step 6: HealthComponent HP unchanged when using potion at full HP (remains 100)")
+	_assert_test(player.character_stats.current_health == hp_before_full, "Step 6: CharacterStats HP unchanged when using potion at full HP (remains 100)")
+
+	# Additional: Equipment Max Health bonus does NOT cause auto-heal
+	player.health_component.take_damage(30) # Player is now at 70 / 100 HP
+	await _wait_physics_frames(2)
+	_assert_test(player.health_component.current_health == 70, "Player damaged to 70 HP before equipment test")
+	var armor: EquipmentData = load("res://resources/equipment/cloth_armor.tres") as EquipmentData
+	player.equipment_manager.equip_item_direct(armor) # +10 HP bonus
+	await _wait_physics_frames(2)
+	_assert_test(player.character_stats.max_health == 110, "Max health increased to 110 with cloth armor")
+	_assert_test(player.health_component.max_health == 110, "HealthComponent max_health increased to 110")
+	_assert_test(player.health_component.current_health == 70, "HealthComponent current HP stays at 70 (NO auto-heal on equip)")
+	_assert_test(player.character_stats.current_health == 70, "CharacterStats current HP stays at 70 (NO auto-heal on equip)")
+
+	# Additional: Combat hurt reaction, knockback, and i-frames integrity
+	var dummy_hitbox := HitboxComponent.new()
+	dummy_hitbox.collision_layer = 64
+	dummy_hitbox.faction = HitboxComponent.Faction.ENEMY
+	dummy_hitbox.damage = 10
+	dummy_hitbox.knockback_force = 100.0
+	arena.add_child(dummy_hitbox)
+	dummy_hitbox.global_position = player.global_position + Vector2(16, 0)
+	player.hurtbox_component.receive_hit(dummy_hitbox)
+	await _wait_physics_frames(2)
+	_assert_test(player.hurtbox_component.is_invulnerable, "Hurtbox entered i-frames after hit")
+	_assert_test(player.state_machine.get_current_state_name() == &"hurt", "Player transitioned to Hurt state upon receiving damage")
+	dummy_hitbox.queue_free()
 
 	arena.queue_free()
 	await _wait_physics_frames(2)

@@ -74,6 +74,25 @@ func is_valid_slot(index: int) -> bool:
 	return index >= 0 and index < _slots.size()
 
 
+## Centralized validator for inventory items and slot states.
+## Enforces invariants: valid ItemData, non-empty item_id, positive max_stack,
+## positive quantity <= max_stack, quantity == 1 for non-stackable, and (null, 0) for empty slots.
+func validate_item_state(item_data: ItemData, quantity: int) -> bool:
+	if item_data == null:
+		return quantity == 0
+	if quantity <= 0:
+		return false
+	if item_data.item_id == &"" or item_data.item_id == "":
+		return false
+	if item_data.max_stack <= 0:
+		return false
+	if quantity > item_data.max_stack:
+		return false
+	if (not item_data.is_stackable or item_data.max_stack == 1) and quantity != 1:
+		return false
+	return true
+
+
 func is_full() -> bool:
 	return get_free_slot_count() == 0
 
@@ -111,6 +130,8 @@ func can_fit_item(item_data: ItemData, quantity: int = 1) -> bool:
 ## Returns the actual quantity successfully added (0 <= return <= quantity).
 func add_item(item_data: ItemData, quantity: int = 1) -> int:
 	if item_data == null or quantity <= 0:
+		return 0
+	if item_data.item_id == &"" or item_data.item_id == "" or item_data.max_stack <= 0:
 		return 0
 
 	var remaining := quantity
@@ -161,7 +182,7 @@ func add_item(item_data: ItemData, quantity: int = 1) -> int:
 ## Removes an amount of an item by item_id across all matching slots.
 ## Returns true if the full quantity was successfully removed, false otherwise (atomic).
 func remove_item(item_id: StringName, quantity: int = 1) -> bool:
-	if quantity <= 0 or not has_item(item_id, quantity):
+	if item_id == &"" or quantity <= 0 or not has_item(item_id, quantity):
 		return false
 
 	var remaining := quantity
@@ -310,16 +331,26 @@ func get_inventory_snapshot() -> Array[Dictionary]:
 
 ## Atomically replaces the item in slot_index with new_item and returns the previous internal ItemData.
 ## Official mutation API for external managers like EquipmentManager.
-func replace_slot_item(slot_index: int, new_item: ItemData, new_quantity: int = 1) -> ItemData:
+## Validates new item state before modifying; on failure returns null without modifying the slot.
+func replace_slot_item(slot_index: int, new_item: ItemData, new_quantity: int = -1) -> ItemData:
 	if not is_valid_slot(slot_index):
 		return null
+
+	var target_quantity := new_quantity
+	if target_quantity == -1:
+		target_quantity = 0 if new_item == null else 1
+
+	if not validate_item_state(new_item, target_quantity):
+		return null
+
 	var slot := _slots[slot_index]
 	var old_item := slot.item_data
-	if new_item != null and new_quantity > 0:
+	if new_item != null:
 		slot.item_data = new_item
-		slot.quantity = new_quantity
+		slot.quantity = target_quantity
 	else:
 		slot.clear()
+
 	slot_updated.emit(slot_index)
 	inventory_changed.emit()
 	var event_bus := _get_event_bus()
@@ -328,16 +359,25 @@ func replace_slot_item(slot_index: int, new_item: ItemData, new_quantity: int = 
 	return old_item
 
 
-## Atomically sets a slot's contents.
-func set_slot(slot_index: int, item_data: ItemData, quantity: int = 1) -> bool:
+## Atomically sets a slot's contents after validating state invariants.
+func set_slot(slot_index: int, item_data: ItemData, quantity: int = -1) -> bool:
 	if not is_valid_slot(slot_index):
 		return false
+
+	var target_quantity := quantity
+	if target_quantity == -1:
+		target_quantity = 0 if item_data == null else 1
+
+	if not validate_item_state(item_data, target_quantity):
+		return false
+
 	var slot := _slots[slot_index]
-	if item_data != null and quantity > 0:
+	if item_data != null:
 		slot.item_data = item_data
-		slot.quantity = quantity
+		slot.quantity = target_quantity
 	else:
 		slot.clear()
+
 	slot_updated.emit(slot_index)
 	inventory_changed.emit()
 	var event_bus := _get_event_bus()
@@ -348,6 +388,8 @@ func set_slot(slot_index: int, item_data: ItemData, quantity: int = 1) -> bool:
 
 ## Atomically clears a specific slot.
 func clear_slot(slot_index: int) -> bool:
+	if not is_valid_slot(slot_index):
+		return false
 	return set_slot(slot_index, null, 0)
 
 

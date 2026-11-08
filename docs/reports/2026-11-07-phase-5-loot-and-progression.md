@@ -1,6 +1,6 @@
 # Implementation Report: Phase 5 — Loot & Progression
 
-- **Tanggal Pelaksanaan:** 2026-11-07
+- **Tanggal Pelaksanaan:** 2026-11-08 (Updated Final Blocker Fixes)
 - **Status:** COMPLETED & REGRESSION VERIFIED (100% PASS)
 - **Pelaksana:** Senior Godot Game Developer & Game Systems Architect
 - **Engine:** Godot Engine 4.7.2 (v4.7.2.stable.official.ed1daf0bf)
@@ -14,16 +14,16 @@
 
 Mengimplementasikan sistem **Loot, Inventory, Equipment, dan Character Progression** pada **Phase 5** untuk game *Petualang Untidar* berdasarkan arsitektur Phase 1 sampai Phase 4 yang telah disetujui:
 1. **Item & Equipment Custom Resources:** Perancangan model data terstruktur `ItemData` dan `EquipmentData` berbasis Godot Custom Resource (`.tres`), dilengkapi 6 aset sampel konkret (Wooden Sword, Iron Sword, Cloth Armor, Leather Armor, Health Potion, Slime Jelly) berserta ikon pixel art 16x16.
-2. **Inventory System (20 Slot):** Pengelolaan inventaris `InventoryManager` dengan model slot `InventorySlot` (`RefCounted`), penggabungan stack otomatis (*stack merging*), distribusi luapan (*stack overflow*), penambahan parsial (*partial insertion*), pemindahan dan penukaran slot atomik (*atomic swap/move*), dan perlindungan mutasi eksternal via deep-copy snapshot.
-3. **Equipment System & Modular Visuals:** Manajemen perlengkapan `EquipmentManager` dengan 5 slot terdedikasi (`weapon`, `body`, `pants`, `head`, `accessory`), penukaran langsung di tempat (*in-place inventory swap*), perlindungan pelepasan saat inventaris penuh (*zero item loss*), sinkronisasi tekstur ke `ModularVisuals`, dan pemicuan rekalkulasi stat tempur.
-4. **Character Stats & Level Progression:** Penghitungan status karakter `CharacterStats` menggabungkan Base Stats, Equipment Bonuses, dan Allocated Progression Points. Dilengkapi mekanisme kurva level EXP progresif, akumulasi luapan multi-level (*multi-level overflow*), alokasi stat point (+3/level), serta pencegahan eksploitasi darah penuh (*max HP clamping anti auto-heal*).
+2. **Inventory System (20 Slot) & Mutation Invariants:** Pengelolaan inventaris `InventoryManager` dengan model slot `InventorySlot` (`RefCounted`), fungsi validasi terpusat `validate_item_state()`, penggabungan stack otomatis (*stack merging*), distribusi luapan (*stack overflow*), penambahan parsial (*partial insertion*), pemindahan dan penukaran slot atomik (*atomic swap/move*), dan perlindungan mutasi eksternal via deep-copy snapshot.
+3. **Equipment System & Modular Visuals:** Manajemen perlengkapan `EquipmentManager` dengan 4 slot terdedikasi (`weapon`, `head`, `body`, `accessory`), penukaran langsung di tempat (*in-place inventory swap*), perlindungan pelepasan saat inventaris penuh (*zero item loss*), pembersihan layer visual sprite saat unequip dan sinkronisasi ulang (`ModularVisuals.set_layer_texture(layer, null)`), dan pemicuan rekalkulasi stat tempur hanya setelah transaksi berhasil.
+4. **Character Stats & Level Progression:** Penghitungan status karakter `CharacterStats` menggabungkan Base Stats, Equipment Bonuses, dan Allocated Progression Points. Otoritas runtime HP tempur berada di `HealthComponent`, disinkronkan secara konsisten ke `CharacterStats` tanpa rekursif. Dilengkapi mekanisme kurva level EXP progresif $\text{int}(100 \times \text{level}^{1.4})$, akumulasi luapan multi-level (*multi-level overflow*), alokasi stat point (+3/level), serta pencegahan eksploitasi darah penuh (*max HP clamping anti auto-heal*).
 5. **Combat System Integration:** Menghubungkan Attack langsung ke damage kombo 2-tahap `PlayerAttackState`, Defense ke reduksi kerusakan di `HurtboxComponent`, dan Move Speed ke `VelocityComponent`.
-6. **Loot Drop & Ground Item System:** Pemodelan `LootTable` dan `LootDropEntry` yang mendukung evaluasi peluang independen dan distribusi kolam berbobot (*weighted pool*) dengan injeksi RNG deterministik. Entitas fisik tanah `WorldItem` (`Area2D` di Layer 8) dengan animasi floating/bobbing sinusoidal, single-pickup lock, dan penolakan aman di tanah jika inventaris penuh (*ground rejection*). Serta `LootSpawner` yang merespons `EventBus.enemy_defeated_at` untuk mendistribusikan EXP dan memunculkan loot secara aman via `call_deferred`.
-7. **User Interface (InventoryUI) & Mobile Controls:** Antarmuka responsif 640x360 dengan grid 20 slot, panel detail item, tombol aksi (Equip/Unequip/Drop), visual slot equipment, bilah progres EXP, panel atribut tempur, alokasi stat points (+), pintasan tombol keyboard ('I', 'C', Esc), dan penambahan tombol aksi `%InventoryButton` pada `TouchControls`.
+6. **Loot Drop & Ground Item System:** Pemodelan `LootTable` dan `LootDropEntry` yang mendukung evaluasi peluang independen ($< \text{drop\_chance}$, peluang 0.0 tidak pernah drop, 1.0 selalu drop) dan distribusi kolam berbobot (*weighted pool*) dengan validasi invariant `is_valid()` dan injeksi RNG deterministik. Entitas fisik tanah `WorldItem` (`Area2D` di Layer 8) dengan animasi floating/bobbing sinusoidal, single-pickup lock, dan penolakan aman di tanah jika inventaris penuh (*ground rejection*). Serta `LootSpawner` yang merespons `EventBus.enemy_defeated_at` untuk mendistribusikan EXP dan memunculkan loot secara aman via `call_deferred`.
+7. **User Interface (InventoryUI) & Mobile Controls:** Antarmuka responsif 640x360 dengan grid 20 slot, panel detail item, tombol aksi (Pasang/Gunakan/Buang), visual 4 slot perlengkapan, sinkronisasi penggunaan Health Potion ke `HealthComponent` dan `CharacterStats`, bilah progres EXP, panel atribut tempur, alokasi stat points (+), pintasan tombol keyboard ('I', 'C', Esc), dan penambahan tombol aksi `%InventoryButton` pada `TouchControls`.
 8. **Automated Unit & Runtime Verification:**
-   - `tests/test_phase_5.gd`: 122 assertions unit validation (100% PASS).
-   - `tests/runtime_validation_phase_5.gd`: 29 assertions runtime physics simulation (100% PASS).
-   - Regresi total proyek: 582 / 582 assertions lulus (100% PASS).
+   - `tests/test_phase_5.gd`: 182 assertions unit validation (100% PASS).
+   - `tests/runtime_validation_phase_5.gd`: 58 assertions runtime physics simulation (100% PASS).
+   - Regresi total proyek: 671 / 671 assertions lulus pada 8 test suites (100% PASS).
 
 ---
 
@@ -176,32 +176,38 @@ Dijalankan secara headless menggunakan engine Godot 4.7.2:
 ```bash
 godot --headless -s tests/test_phase_5.gd
 ```
-**Hasil:** **147 / 147 assertions PASS (100%)**
-- *Section 1: ItemData & EquipmentData Resources* (19 assertions) - PASS
-- *Section 2: Inventory Stacking, Capacity & Partial Insertion* (17 assertions) - PASS
-- *Section 3: Inventory Move, Swap & Snapshot Safety* (16 assertions) - PASS
-- *Section 4: EquipmentManager Atomic Equip, Unequip & Validation* (16 assertions) - PASS
+**Hasil:** **182 / 182 assertions PASS (100%)**
+- *Section 1: ItemData & EquipmentData Resources* (20 assertions) - PASS
+- *Section 2: Inventory Stacking, Capacity & Partial Insertion* (21 assertions) - PASS
+- *Section 3: Inventory Move, Swap, Snapshot Safety & Invariant Mutation* (34 assertions) - PASS
+- *Section 4: EquipmentManager Atomic Equip, Unequip, Visual Cleanup & Resync* (22 assertions) - PASS
 - *Section 5: CharacterStats Calculation & Dynamic Combat Scaling* (23 assertions) - PASS
-- *Section 6: EXP Curve, Multi-Level Overflow & Stat Points* (15 assertions) - PASS
-- *Section 7: LootTable & Deterministic Injected RNG* (11 assertions) - PASS
-- *Section 8: WorldItem Pickup Logic & Full Inventory Ground Rejection* (30 assertions) - PASS
+- *Section 6: EXP Curve, Multi-Level Overflow & Stat Points* (17 assertions) - PASS
+- *Section 7: LootTable, Probability Invariants & Deterministic Rolls* (24 assertions) - PASS
+- *Section 8: WorldItem Pickup Logic & Full Inventory Ground Rejection* (21 assertions) - PASS
 
 ### 8.2 Phase 5 Runtime Physics Simulation (`tests/runtime_validation_phase_5.gd`)
 Menguji integrasi gameplay aktif multi-frame di arena tempur:
 ```bash
 godot --headless -s tests/runtime_validation_phase_5.gd
 ```
-**Hasil:** **37 / 37 assertions PASS (100%)**
-- *Simulation 1: Arena World Item Spawning & Floating Bobbing Animation* (4 assertions) - PASS
+**Hasil:** **58 / 58 assertions PASS (100%)**
+- *Simulation 1: Arena World Item Spawning & Enemy Defeat* (6 assertions) - PASS
 - *Simulation 2: WorldItem Auto-Pickup and Inventory Insertion* (2 assertions) - PASS
 - *Simulation 3: Equipment Dynamic Combat Scaling & Enemy Impact* (5 assertions) - PASS
   - Baseline attack: 13 damage (15 ATK - 2 Slime DEF).
   - Iron Sword equipped: 25 damage (27 ATK - 2 Slime DEF, +12 damage scaling).
-- *Simulation 4: Enemy Defeat EXP Reward, Level Up & Stat Points* (5 assertions) - PASS
+- *Simulation 4: Enemy Defeat EXP Reward, Level Up & Stat Points* (7 assertions) - PASS
 - *Simulation 5: Full Inventory Ground Rejection* (4 assertions) - PASS
 - *Simulation 6: Runtime Partial Pickup & Remainder Collection* (6 assertions) - PASS
-- *Simulation 7: Runtime Dual Enemy Defeat with Same Enemy ID* (2 assertions) - PASS
+- *Simulation 7: Runtime Dual Enemy Defeat with Same Enemy ID* (3 assertions) - PASS
 - *Simulation 8: Inventory UI Toggle & Display Synchronization* (7 assertions) - PASS
+- *Simulation 9: Health Potion Synchronization & HP Invariants* (18 assertions) - PASS
+  - HP start 100/100, damage ke 60, potion menyembuhkan ke 90, 1 potion berkurang.
+  - Potion saat 90 HP tidak melebihi 100 Max HP (clamped).
+  - Potion saat 100 HP tidak mengubah HP.
+  - Equip item penambah Max HP tidak menghasilkan auto-heal.
+  - Hurt state, knockback, dan i-frames tetap berfungsi normal.
 
 ### 8.3 Full Project Regression Summary Across All Phases
 
@@ -213,9 +219,9 @@ godot --headless -s tests/runtime_validation_phase_5.gd
 | **Phase 3 Runtime Suite** | `tests/runtime_validation_phase_3.gd` | 78 | **78 / 78 PASS** |
 | **Phase 4 Unit Suite** | `tests/test_phase_4.gd` | 97 | **97 / 97 PASS** |
 | **Phase 4 Runtime Suite** | `tests/runtime_validation_phase_4.gd` | 47 | **47 / 47 PASS** |
-| **Phase 5 Unit Suite** | `tests/test_phase_5.gd` | 147 | **147 / 147 PASS** |
-| **Phase 5 Runtime Suite** | `tests/runtime_validation_phase_5.gd` | 37 | **37 / 37 PASS** |
-| **TOTAL KESELURUHAN** | **8 Test Suites** | **615** | **615 / 615 PASS (100%)** |
+| **Phase 5 Unit Suite** | `tests/test_phase_5.gd` | 182 | **182 / 182 PASS** |
+| **Phase 5 Runtime Suite** | `tests/runtime_validation_phase_5.gd` | 58 | **58 / 58 PASS** |
+| **TOTAL KESELURUHAN** | **8 Test Suites** | **671** | **671 / 671 PASS (100%)** |
 
 ---
 

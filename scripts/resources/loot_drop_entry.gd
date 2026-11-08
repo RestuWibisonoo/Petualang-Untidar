@@ -19,3 +19,18 @@ func _init(p_item: ItemData = null, p_chance: float = 0.5, p_min: int = 1, p_max
 	max_quantity = p_max
 	weight = p_weight
 
+
+## Validates entry configuration invariants.
+func is_valid() -> bool:
+	if item_data == null:
+		return false
+	if drop_chance < 0.0 or drop_chance > 1.0:
+		return false
+	if min_quantity <= 0:
+		return false
+	if max_quantity < min_quantity:
+		return false
+	if weight < 0:
+		return false
+	return true
+

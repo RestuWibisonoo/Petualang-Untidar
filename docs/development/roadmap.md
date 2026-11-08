@@ -139,22 +139,23 @@
 ## Phase 5: Loot & Progression
 
 * **Tujuan:** Mengembangkan sistem inventaris, equipment, drop loot berbobot persentase, dan peningkatan status karakter berbasis resource.
-* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 122/122 assertions dan runtime physics suite 29/29 assertions, 100% PASS)
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 182/182 assertions dan runtime physics suite 58/58 assertions, 100% PASS)
 * **Dependencies:** Phase 4 (Combat System), Phase 1 (Data Resources).
 * **Daftar Pekerjaan Selesai:**
-  1. Implementasi Resource `ItemData` dan turunan `EquipmentData` (`Weapon`, `Head`, `Body`, `Accessory`) dengan rarity, stacking, dan icon pixel-art terdedikasi.
-  2. Sistem `InventoryManager` terpusat: kapasitas 20 slot, stack merging otomatis, penanganan kapasitas parsial, pemindahan & pertukaran slot aman tanpa kehilangan/duplikasi item.
-  3. Sistem `EquipmentManager` dengan pertukaran atomic (in-place inventory swap), penolakan aman saat inventaris penuh, sinkronisasi atribut karakter, dan integrasi visual `ModularVisuals`.
-  4. Komponen `CharacterStats`: perhitungan dinamis Base Stats + Equipment Bonuses + Allocated Stat Points, pembatasan Max HP, integrasi scaling serangan langsung ke `PlayerAttackState`, dan pertahanan ke `HurtboxComponent`.
+  1. Implementasi Resource `ItemData` dan turunan `EquipmentData` (4 slot terdedikasi: `WEAPON`, `HEAD`, `BODY`, `ACCESSORY`) dengan rarity, stacking, dan icon pixel-art terdedikasi.
+  2. Sistem `InventoryManager` terpusat: kapasitas 20 slot, validator status terpusat `validate_item_state()`, penolakan mutasi invalid tanpa duplikasi/kehilangan item, stack merging otomatis, penanganan kapasitas parsial, dan mutasi atomik resmi (`replace_slot_item`, `set_slot`, `clear_slot`).
+  3. Sistem `EquipmentManager` dengan pertukaran atomic (in-place inventory swap), penolakan aman saat inventaris penuh, pembersihan visual layer sprite saat unequip/resync (`ModularVisuals.set_layer_texture(layer, null)`), dan sinkronisasi atribut karakter.
+  4. Komponen `CharacterStats`: perhitungan dinamis Base Stats + Equipment Bonuses + Allocated Stat Points, kurva EXP progresif $\text{int}(100 \times \text{level}^{1.4})$, otoritas HP tempur terpusat di `HealthComponent` dengan sinkronisasi dua arah bebas recursive loop, pembatasan Max HP, dan pencegahan auto-heal saat equip armor.
   5. Sistem EXP dan Leveling: penambahan EXP saat musuh dikalahkan, level up otomatis (multi-level overflow), formula ambang level adaptif, dan alokasi poin status (+HP, +ATK, +DEF).
-  6. Sistem `LootTable` dan `LootDropEntry`: evaluasi probabilitas drop independen dan weighted raffle selection dengan RNG terinjeksi untuk uji deterministik.
-  7. Komponen `LootSpawner` dan scene `WorldItem`: animasi floating bobbing, pickup fisik otomatis & interaksi tombol E, proteksi pengambilan ganda (single-pickup lock), dan penolakan aman saat inventaris penuh.
-  8. Antarmuka Pengguna `InventoryUI`: panel grid 20 slot, detail barang terpilih, tombol aksi pasang/buang, tampilan slot perlengkapan, EXP bar, display status tempur, tombol alokasi stat point, kompatibel 640x360, serta integrasi tombol sentuh mobile `%InventoryButton`.
+  6. Sistem `LootTable` dan `LootDropEntry`: evaluasi probabilitas drop independen ($< \text{drop\_chance}$, 0.0 never drops, 1.0 always drops) dan weighted raffle selection dengan RNG terinjeksi untuk uji deterministik, serta validasi invariant `is_valid()`.
+  7. Komponen `LootSpawner` dan scene `WorldItem`: animasi floating bobbing, pickup fisik otomatis & interaksi tombol E, proteksi pengambilan ganda (single-pickup lock), penolakan aman saat inventaris penuh, dan pengambilan parsial.
+  8. Antarmuka Pengguna `InventoryUI`: panel grid 20 slot, detail barang terpilih, tombol aksi pasang/gunakan/buang, tampilan 4 slot perlengkapan, sinkronisasi pemulihan potion 30 HP ke `HealthComponent` & `CharacterStats`, EXP bar, display status tempur, tombol alokasi stat point, kompatibel 640x360, serta integrasi tombol sentuh mobile `%InventoryButton`.
 * **Verified Deliverables & Acceptance Criteria:**
   - Item dapat dijatuhkan dari musuh yang mati dan dipungut masuk ke inventaris secara mulus.
   - Memasang senjata atau zirah secara langsung dan akurat meningkatkan nilai serang/tahan di hitboxes dan kalkulasi damage pertempuran nyata.
   - Tidak ada duplikasi atau kehilangan item pada seluruh skenario pemindahan, pertukaran, maupun operasi gagal karena inventaris penuh.
-  - Seluruh sistem lulus uji regresi 582/582 assertions (100% PASS).
+  - Potion menyembuhkan HP secara sinkron antara `HealthComponent` dan `CharacterStats` tanpa melebihi Max Health dan tanpa auto-heal saat equip armor.
+  - Seluruh sistem lulus uji regresi 671/671 assertions pada 8 test suites (100% PASS).
 
 ---
 

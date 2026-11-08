@@ -40,6 +40,7 @@ var defense: int = 0
 var movement_speed: float = 120.0
 
 var _last_equipment_bonuses: Dictionary = {}
+var health_component_ref: HealthComponent = null
 
 static var instance: CharacterStats = null
 
@@ -85,7 +86,11 @@ func recalculate(equipment_bonuses: Dictionary = {}) -> void:
 	movement_speed = base_movement_speed + eq_spd
 
 	# Current health must never exceed max_health
-	current_health = mini(current_health, max_health)
+	if health_component_ref and is_instance_valid(health_component_ref):
+		health_component_ref.max_health = max_health
+		current_health = health_component_ref.current_health
+	else:
+		current_health = mini(current_health, max_health)
 
 	stats_changed.emit()
 	health_changed.emit(current_health, max_health)
@@ -110,16 +115,27 @@ func sync_with_player(player: Node2D) -> void:
 	if vel_comp and "max_speed" in vel_comp:
 		vel_comp.max_speed = movement_speed
 
-	var health_comp: Node = player.get_node_or_null("HealthComponent")
+	var health_comp: HealthComponent = player.get_node_or_null("HealthComponent") as HealthComponent
 	if health_comp:
-		if "max_health" in health_comp:
-			health_comp.max_health = max_health
-		if "current_health" in health_comp:
-			health_comp.current_health = current_health
+		health_component_ref = health_comp
+		health_comp.max_health = max_health
+		health_comp.current_health = mini(health_comp.current_health, max_health)
+		current_health = health_comp.current_health
 
 	var hurtbox: Node = player.get_node_or_null("HurtboxComponent")
 	if hurtbox and "defense" in hurtbox:
 		hurtbox.defense = defense
+
+
+func set_health_from_component(current: int, max_val: int) -> void:
+	var changed: bool = (current_health != current or max_health != max_val)
+	current_health = current
+	max_health = max_val
+	if changed:
+		health_changed.emit(current_health, max_health)
+		var event_bus := _get_event_bus()
+		if event_bus and event_bus.has_signal("player_health_changed"):
+			event_bus.player_health_changed.emit(current_health, max_health)
 
 
 func add_experience(amount: int) -> void:
@@ -171,21 +187,27 @@ func allocate_stat_point(stat_name: StringName, points: int = 1) -> bool:
 func heal(amount: int) -> void:
 	if amount <= 0:
 		return
-	current_health = mini(max_health, current_health + amount)
-	health_changed.emit(current_health, max_health)
-	var event_bus := _get_event_bus()
-	if event_bus and event_bus.has_signal("player_health_changed"):
-		event_bus.player_health_changed.emit(current_health, max_health)
+	if health_component_ref and is_instance_valid(health_component_ref):
+		health_component_ref.heal(amount)
+	else:
+		current_health = mini(max_health, current_health + amount)
+		health_changed.emit(current_health, max_health)
+		var event_bus := _get_event_bus()
+		if event_bus and event_bus.has_signal("player_health_changed"):
+			event_bus.player_health_changed.emit(current_health, max_health)
 
 
 func take_damage(amount: int) -> void:
 	if amount <= 0:
 		return
-	current_health = maxi(0, current_health - amount)
-	health_changed.emit(current_health, max_health)
-	var event_bus := _get_event_bus()
-	if event_bus and event_bus.has_signal("player_health_changed"):
-		event_bus.player_health_changed.emit(current_health, max_health)
+	if health_component_ref and is_instance_valid(health_component_ref):
+		health_component_ref.take_damage(amount)
+	else:
+		current_health = maxi(0, current_health - amount)
+		health_changed.emit(current_health, max_health)
+		var event_bus := _get_event_bus()
+		if event_bus and event_bus.has_signal("player_health_changed"):
+			event_bus.player_health_changed.emit(current_health, max_health)
 
 
 func _get_event_bus() -> Node:

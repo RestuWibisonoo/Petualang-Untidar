@@ -11,12 +11,26 @@ extends Resource
 @export var weighted_roll_count: int = 1
 
 
+## Returns true if all entries and configuration parameters adhere to table invariants.
+func is_valid_configuration() -> bool:
+	if weighted_roll_count < 0:
+		return false
+	for entry in entries:
+		if entry == null or not entry.is_valid():
+			return false
+	return true
+
+
 ## Evaluates loot rolls and returns an array of dropped items with quantities.
 ## Format: [ { "item_data": ItemData, "quantity": int }, ... ]
 ## Accepts an injectable RandomNumberGenerator for deterministic testing.
 func roll_loot(rng: RandomNumberGenerator = null) -> Array[Dictionary]:
 	var drops: Array[Dictionary] = []
 	if entries.is_empty():
+		return drops
+
+	if weighted_roll_count < 0:
+		push_warning("[LootTable] Invalid negative weighted_roll_count: %d" % weighted_roll_count)
 		return drops
 
 	var active_rng := rng
@@ -28,7 +42,7 @@ func roll_loot(rng: RandomNumberGenerator = null) -> Array[Dictionary]:
 		# Weighted selection: chooses N guaranteed items from a weighted raffle pool
 		var total_weight: int = 0
 		for entry in entries:
-			if entry and entry.item_data and entry.weight > 0:
+			if entry and entry.is_valid() and entry.weight > 0:
 				total_weight += entry.weight
 
 		if total_weight > 0:
@@ -36,7 +50,7 @@ func roll_loot(rng: RandomNumberGenerator = null) -> Array[Dictionary]:
 				var pick_value: int = active_rng.randi_range(1, total_weight)
 				var cumulative: int = 0
 				for entry in entries:
-					if not entry or not entry.item_data or entry.weight <= 0:
+					if not entry or not entry.is_valid() or entry.weight <= 0:
 						continue
 					cumulative += entry.weight
 					if pick_value <= cumulative:
@@ -49,12 +63,12 @@ func roll_loot(rng: RandomNumberGenerator = null) -> Array[Dictionary]:
 						})
 						break
 	else:
-		# Independent Drop Chance: rolls each entry independently
+		# Independent Drop Chance: rolls each entry independently (< drop_chance)
 		for entry in entries:
-			if not entry or not entry.item_data:
+			if not entry or not entry.is_valid():
 				continue
 			var roll_chance := active_rng.randf()
-			if roll_chance <= entry.drop_chance:
+			if roll_chance < entry.drop_chance:
 				var min_q := mini(entry.min_quantity, entry.max_quantity)
 				var max_q := maxi(entry.min_quantity, entry.max_quantity)
 				var qty := active_rng.randi_range(min_q, max_q)

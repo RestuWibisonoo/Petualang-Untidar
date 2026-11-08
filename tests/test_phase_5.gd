@@ -211,6 +211,46 @@ func test_inventory_move_swap_and_snapshots() -> void:
 	slot_data["item_data"].item_name = "Data Dict Mutated"
 	_assert_test(inv.get_slot(3).item_data.item_name == orig_name, "Internal ItemData unaffected by mutating get_slot_data item_data")
 
+	# 7. Centralized validate_item_state() invariants
+	_assert_test(inv.validate_item_state(null, 0), "Empty slot (null, 0) is valid")
+	_assert_test(not inv.validate_item_state(null, 5), "Empty slot with non-zero quantity is rejected")
+	_assert_test(not inv.validate_item_state(potion, -1), "Negative quantity is rejected")
+	_assert_test(not inv.validate_item_state(potion, 0), "Zero quantity for non-null item is rejected")
+	_assert_test(not inv.validate_item_state(potion, 25), "Quantity exceeding max_stack (20) is rejected")
+	_assert_test(not inv.validate_item_state(sword, 2), "Quantity > 1 for non-stackable item is rejected")
+	_assert_test(inv.validate_item_state(sword, 1), "Quantity 1 for non-stackable item is valid")
+
+	# 8. Mutation failure rejection & slot integrity preservation
+	inv.set_slot(4, sword, 1)
+	var prev_item_name: String = inv.get_slot(4).item_data.item_name
+	var fail_set := inv.set_slot(4, sword, 5) # invalid qty for sword
+	_assert_test(not fail_set, "set_slot with invalid state rejected")
+	_assert_test(inv.get_slot(4).item_data.item_name == prev_item_name, "Slot 4 contents unchanged after rejected set_slot")
+
+	var fail_null_set := inv.set_slot(4, null, 10) # invalid null with positive qty
+	_assert_test(not fail_null_set, "set_slot with null and positive qty rejected")
+	_assert_test(inv.get_slot(4).item_data.item_name == prev_item_name, "Slot 4 preserved after rejected null set")
+
+	# 9. replace_slot_item failure validation & zero item loss guarantee
+	var fail_replace := inv.replace_slot_item(4, sword, 99) # invalid qty
+	_assert_test(fail_replace == null, "replace_slot_item with invalid new item returns null")
+	_assert_test(inv.get_slot(4).item_data.item_id == sword.item_id, "Old item in slot 4 preserved after failed replacement")
+
+	var fail_null_replace := inv.replace_slot_item(4, null, 5) # invalid null with qty
+	_assert_test(fail_null_replace == null, "replace_slot_item with invalid null quantity returns null")
+	_assert_test(inv.get_slot(4).item_data.item_id == sword.item_id, "Old item in slot 4 preserved after failed null replacement")
+
+	# Valid replace_slot_item returns old item and puts new item in slot
+	var old_replaced := inv.replace_slot_item(4, potion, 5)
+	_assert_test(old_replaced != null and old_replaced.item_id == sword.item_id, "replace_slot_item returns previous item upon success")
+	_assert_test(inv.get_slot(4).item_data.item_id == potion.item_id and inv.get_slot(4).quantity == 5, "Slot 4 now contains new item with quantity 5")
+
+	# 10. clear_slot API
+	var clear_ok := inv.clear_slot(4)
+	_assert_test(clear_ok, "clear_slot(4) succeeded")
+	_assert_test(inv.get_slot(4).is_empty(), "Slot 4 is empty (null, 0)")
+	_assert_test(not inv.clear_slot(999), "clear_slot out of bounds rejected")
+
 	inv.free()
 
 
@@ -273,6 +313,42 @@ func test_equipment_manager_atomic_operations() -> void:
 	_assert_test(equip_mgr.get_equipped_item(EquipmentData.EquipmentSlot.WEAPON) == null, "WEAPON slot is empty")
 	_assert_test(stats.attack == 15, "Character attack returned to base 15")
 
+	# 6. Visual layer cleanup upon unequip & sync_modular_visuals()
+	var vis := ModularVisuals.new()
+	var sprite_weapon := Sprite2D.new()
+	sprite_weapon.name = "Weapon"
+	vis.add_child(sprite_weapon)
+	var sprite_armor := Sprite2D.new()
+	sprite_armor.name = "Armor"
+	vis.add_child(sprite_armor)
+	var sprite_head := Sprite2D.new()
+	sprite_head.name = "Headgear"
+	vis.add_child(sprite_head)
+	var sprite_acc := Sprite2D.new()
+	sprite_acc.name = "AccessoryFront"
+	vis.add_child(sprite_acc)
+	vis._init_layers()
+
+	equip_mgr.modular_visuals = vis
+
+	# Direct equip weapon with texture
+	equip_mgr.equip_item_direct(sword_wood)
+	_assert_test(sprite_weapon.texture == sword_wood.visual_texture, "Weapon sprite assigned sword texture on equip")
+	_assert_test(sprite_weapon.visible, "Weapon sprite visible on equip")
+
+	# Unequip weapon directly: verifies visual texture is cleared (null) and visibility false
+	equip_mgr.unequip_direct(EquipmentData.EquipmentSlot.WEAPON)
+	_assert_test(sprite_weapon.texture == null, "Weapon sprite texture cleared to null on unequip")
+	_assert_test(not sprite_weapon.visible, "Weapon sprite visibility set to false on unequip")
+
+	# Set rogue texture on an unequipped layer and run sync_modular_visuals
+	sprite_head.texture = sword_wood.visual_texture
+	sprite_head.visible = true
+	equip_mgr.sync_modular_visuals(vis)
+	_assert_test(sprite_head.texture == null, "Rogue texture on unequipped Headgear layer cleared by sync_modular_visuals")
+	_assert_test(not sprite_head.visible, "Headgear layer visibility reset to false by sync_modular_visuals")
+
+	vis.free()
 	equip_mgr.free()
 	stats.free()
 	inv.free()
@@ -443,14 +519,49 @@ func test_loot_table_and_probability_rolls() -> void:
 	_assert_test(g_drops.size() == 1, "100% drop chance entry always drops")
 	_assert_test(g_drops[0]["quantity"] == 2, "Drop quantity matches configured range (2)")
 
-	# 3. Test 0% drop chance never drops
+	# 3. Test 0% drop chance never drops across 100 trials (< comparison invariant)
 	var zero_table := LootTable.new()
 	var entry_0 := LootDropEntry.new(potion, 0.0, 1, 1, 10)
 	zero_table.entries.append(entry_0)
-	var z_drops := zero_table.roll_loot()
-	_assert_test(z_drops.is_empty(), "0% drop chance entry never drops")
+	var all_zero_passed := true
+	for i in range(100):
+		if not zero_table.roll_loot().is_empty():
+			all_zero_passed = false
+			break
+	_assert_test(all_zero_passed, "0.0 drop chance entry never drops across 100 trials")
 
-	# 4. Weighted selection pool test
+	# 100% drop chance always drops across 100 trials
+	var all_guaranteed_passed := true
+	for i in range(100):
+		if guaranteed_table.roll_loot().size() != 1:
+			all_guaranteed_passed = false
+			break
+	_assert_test(all_guaranteed_passed, "1.0 drop chance entry always drops across 100 trials")
+
+	# 4. Invariant validation for LootDropEntry & LootTable
+	_assert_test(entry_100.is_valid(), "Valid LootDropEntry passes is_valid()")
+	var invalid_entry_null := LootDropEntry.new(null, 0.5, 1, 1, 10)
+	_assert_test(not invalid_entry_null.is_valid(), "LootDropEntry with null item_data is invalid")
+	var invalid_entry_chance := LootDropEntry.new(potion, 1.5, 1, 1, 10)
+	_assert_test(not invalid_entry_chance.is_valid(), "LootDropEntry with drop_chance > 1.0 is invalid")
+	var invalid_entry_qty := LootDropEntry.new(potion, 0.5, 5, 2, 10)
+	_assert_test(not invalid_entry_qty.is_valid(), "LootDropEntry with min_quantity > max_quantity is invalid")
+	var invalid_entry_weight := LootDropEntry.new(potion, 0.5, 1, 1, -5)
+	_assert_test(not invalid_entry_weight.is_valid(), "LootDropEntry with negative weight is invalid")
+
+	var table_with_invalid := LootTable.new()
+	table_with_invalid.entries.append(invalid_entry_null)
+	table_with_invalid.entries.append(entry_100)
+	_assert_test(not table_with_invalid.is_valid_configuration(), "Table containing invalid entry reported as invalid configuration")
+	var mixed_drops := table_with_invalid.roll_loot()
+	_assert_test(mixed_drops.size() == 1 and mixed_drops[0]["item_data"] == potion, "Invalid entries are safely ignored during roll without crashes")
+
+	# Negative weighted_roll_count returns empty array safely
+	table_with_invalid.use_weighted_selection = true
+	table_with_invalid.weighted_roll_count = -1
+	_assert_test(table_with_invalid.roll_loot().is_empty(), "Negative weighted_roll_count safely returns empty drops")
+
+	# 5. Weighted selection pool test
 	var weighted_table := LootTable.new()
 	weighted_table.use_weighted_selection = true
 	weighted_table.weighted_roll_count = 1

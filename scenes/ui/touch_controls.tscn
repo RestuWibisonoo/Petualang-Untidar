@@ -78,13 +78,24 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -70.0
+offset_left = -120.0
 offset_bottom = 54.0
 grow_horizontal = 0
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 16
 
-[node name="InventoryButton" type="Button" parent="Root/TopRightMargin"]
+[node name="HBoxTopRight" type="HBoxContainer" parent="Root/TopRightMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="QuestButton" type="Button" parent="Root/TopRightMargin/HBoxTopRight"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "QUEST"
+
+[node name="InventoryButton" type="Button" parent="Root/TopRightMargin/HBoxTopRight"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(44, 38)
 layout_mode = 2

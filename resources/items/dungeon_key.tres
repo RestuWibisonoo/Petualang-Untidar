@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/items/dungeon_key.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_script")
+icon = ExtResource("2_icon")
+item_id = &"dungeon_key"
+item_name = "Kunci Labirin"
+description = "Kunci emas kuno berukir lambang Untidar. Dibutuhkan untuk membuka gerbang Dungeon Labirin."
+item_type = 3
+rarity = 2
+max_stack = 99
+sell_value = 50
+is_stackable = true

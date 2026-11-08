@@ -1,0 +1,100 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemy/boss_enemy.gd" id="1_boss"]
+[ext_resource type="Texture2D" path="res://assets/enemies/boss_gorgon.png" id="2_gorgon"]
+[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="3_health"]
+[ext_resource type="Script" path="res://scripts/components/velocity_component.gd" id="4_velocity"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox_component.gd" id="5_hurtbox"]
+[ext_resource type="Script" path="res://scripts/components/hitbox_component.gd" id="6_hitbox"]
+[ext_resource type="Script" path="res://scripts/states/state_machine.gd" id="7_fsm"]
+[ext_resource type="Script" path="res://scripts/enemy/states/enemy_idle_state.gd" id="8_idle"]
+[ext_resource type="Script" path="res://scripts/enemy/states/enemy_chase_state.gd" id="9_chase"]
+[ext_resource type="Script" path="res://scripts/enemy/states/enemy_attack_state.gd" id="10_attack"]
+[ext_resource type="Script" path="res://scripts/enemy/states/enemy_hurt_state.gd" id="11_hurt"]
+[ext_resource type="Resource" path="res://resources/enemies/boss_gorgon_loot.tres" id="12_loot"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 12.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurtbox"]
+radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hitbox"]
+radius = 16.0
+
+[node name="BossEnemy" type="CharacterBody2D"]
+collision_layer = 16
+collision_mask = 19
+script = ExtResource("1_boss")
+enemy_id = &"boss_gorgon"
+enemy_name = "Gorgon Penjaga Labirin"
+max_health = 200
+defense = 4
+move_speed = 50.0
+aggro_radius = 200.0
+deaggro_radius = 320.0
+attack_range = 36.0
+attack_cooldown = 1.2
+base_damage = 20
+knockback_force = 140.0
+exp_reward = 500
+loot_table = ExtResource("12_loot")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 4)
+shape = SubResource("CircleShape2D_body")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_gorgon")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+max_health = 200
+current_health = 200
+
+[node name="VelocityComponent" type="Node" parent="."]
+script = ExtResource("4_velocity")
+max_speed = 50.0
+knockback_friction = 800.0
+
+[node name="HurtboxComponent" type="Area2D" parent="." node_paths=PackedStringArray("health_component", "velocity_component")]
+collision_layer = 32
+collision_mask = 8
+script = ExtResource("5_hurtbox")
+faction = 1
+defense = 4
+health_component = NodePath("../HealthComponent")
+velocity_component = NodePath("../VelocityComponent")
+invulnerability_duration = 0.2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxComponent"]
+position = Vector2(0, 2)
+shape = SubResource("CircleShape2D_hurtbox")
+
+[node name="HitboxComponent" type="Area2D" parent="."]
+collision_layer = 64
+collision_mask = 4
+script = ExtResource("6_hitbox")
+faction = 1
+damage = 20
+knockback_force = 140.0
+is_active = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HitboxComponent"]
+shape = SubResource("CircleShape2D_hitbox")
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+script = ExtResource("7_fsm")
+initial_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine"]
+script = ExtResource("8_idle")
+
+[node name="Chase" type="Node" parent="StateMachine"]
+script = ExtResource("9_chase")
+
+[node name="Attack" type="Node" parent="StateMachine"]
+script = ExtResource("10_attack")
+
+[node name="Hurt" type="Node" parent="StateMachine"]
+script = ExtResource("11_hurt")

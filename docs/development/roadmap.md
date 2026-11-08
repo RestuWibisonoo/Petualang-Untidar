@@ -17,8 +17,8 @@
 | **Phase 3** | World & Exploration | **COMPLETED** | 3 |
 | **Phase 4** | Combat System | **COMPLETED** | 4 |
 | **Phase 5** | Loot & Progression | **COMPLETED** | 5 |
-| **Phase 6** | Quest & Dungeon | **PLANNED** | 6 |
-| **Phase 7** | UI & Persistence | **PLANNED** | 7 |
+| **Phase 6** | Quest & Dungeon | **COMPLETED** | 6 |
+| **Phase 7** | UI & Persistence | **PLANNED** | 7 (Immediate Next) |
 | **Phase 8** | Deployment & Optimization | **PLANNED** | 8 |
 
 ---
@@ -161,20 +161,24 @@
 
 ## Phase 6: Quest & Dungeon
 
-* **Tujuan:** Mengintegrasikan sistem alur cerita petualangan, dialog NPC bercabang, pelacakan tugas (quest log), dan area dungeon bertingkat.
-* **Status Pekerjaan:** **PLANNED**
-* **Dependencies:** Phase 3, Phase 4, Phase 5.
-* **Daftar Pekerjaan:**
-  1. Implementasi Resource `QuestData` (Objective: bunuh musuh, kumpulkan barang, bicara NPC).
-  2. Komponen `QuestManager` yang mendengarkan event via `EventBus` (`enemy_defeated`, `item_collected`).
-  3. Sistem dialog sederhana dengan nama pembicara, potret wajah, dan teks typewriter.
-  4. Logika kunci dan pintu dungeon (mengumpulkan kunci untuk membuka area bos).
-  5. Boss entity dengan phase transitions (fase 1 dan fase 2 serang).
-* **Expected Deliverables:**
-  - NPC dapat memberikan quest, memperbarui progres saat objektif terpenuhi, dan memberikan reward EXP/item.
-  - Area dungeon fungsional dengan tantangan mini-boss.
-* **Acceptance Criteria:**
-  - Progres quest tidak melonjak ganda jika event yang sama terpicu berkali-kali.
+* **Tujuan:** Mengintegrasikan sistem alur cerita petualangan, dialog NPC bercabang, pelacakan tugas (quest log), kunci dungeon, dan pertempuran boss dua fase.
+* **Status Pekerjaan:** **COMPLETED** (Tervalidasi via automated unit suite 93/93 assertions dan runtime physics suite 44/44 assertions; Total regresi proyek 708/708 assertions PASS, 0 errors)
+* **Dependencies:** Phase 3 (World), Phase 4 (Combat), Phase 5 (Loot & Progression).
+* **Daftar Pekerjaan Selesai:**
+  1. Resource Data-Driven `QuestObjectiveData` & `QuestData` (tipe objektif: `KILL_ENEMY`, `COLLECT_ITEM`, `TALK_TO_NPC`), chaining prerequisite quest, dan validasi invarian `is_valid()`.
+  2. Runtime State Decoupled `QuestRuntimeState` (status: `NOT_STARTED`, `ACTIVE`, `COMPLETED`, `REWARD_CLAIMED`), progress clamping otomatis, dan serialisasi save/load dictionary.
+  3. Sistem `QuestManager` terpusat: event-driven via EventBus, deduplikasi event dengan cache terbatas (`_processed_enemy_instances`, `_processed_defeat_events`), klaim hadiah atomik dengan verifikasi kapasitas inventaris multi-item sebelum mutasi, dan pencatatan state serializable.
+  4. Sistem Dialog & NPC: Resource `DialogueData`, entitas `NPC` dengan `Interactable` (Layer 8: 128), dialog stateful adaptif (default/active/completed), dan CanvasLayer `DialogueUI` (Layer 25) dengan navigasi multiline dan player input lock saat bercakap.
+  5. Sistem Kunci & Pintu Dungeon: Resource `dungeon_key.tres`, scene `DungeonDoor` dengan integrasi `InventoryManager` (konsumsi kunci opsional, proteksi race condition, prompt interaktif kontekstual), dan level `dungeon_room.tscn` turunan `WorldBase`.
+  6. Boss Encounter 2-Fase: `BossEnemy` turunan `BaseEnemy` (`boss_gorgon`, 200 HP, 20 ATK, 4 DEF), mekanisme enrage otomatis saat HP $\le 50\%$ (Phase 2: speed 75, damage 30, attack cooldown 0.7s, glow merah), sinyal `enraged` dan `phase_changed(2)`, single death reward tanpa duplikasi, dan loot table khusus `boss_gorgon_loot.tres`.
+  7. Antarmuka Pengguna `QuestUI`: CanvasLayer 24, tombol tab Quest Aktif & Selesai, rincian objektif dengan checklist status `[✓]`, preview hadiah EXP & item, tombol klaim hadiah atomik, toast notification interaktif, shortcut keyboard `Q` (`quest_log`), dan tombol sentuh mobile `%QuestButton`.
+* **Verified Deliverables & Acceptance Criteria:**
+  - NPC dapat memberikan quest, mengunci input pemain saat dialog, dan memperbarui dialog berdasarkan status quest.
+  - Musuh yang dibunuh atau barang yang dipungut memperbarui objektif quest tanpa lonjakan duplikasi event.
+  - Hadiah quest diklaim secara atomik: ditolak aman saat ruang inventaris tidak cukup, dan memberikan EXP serta seluruh item secara presisi saat ruang tersedia.
+  - Pintu dungeon hanya dapat dibuka saat pemain memiliki kunci labirin, dan kunci dikonsumsi secara aman.
+  - Boss Gorgon bertransisi ke Fase 2 secara visual dan statistik saat mencapai $\le 50\%$ HP, lalu memberikan 500 EXP dan drop item saat dikalahkan.
+  - Seluruh 10 test suite (Phase 1–6) lulus 708/708 assertions tanpa kegagalan (100% PASS).
 
 ---
 

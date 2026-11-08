@@ -344,7 +344,73 @@ Resource
 
 ---
 
-## 7. Input System (Cross-Platform)
+## 7. Quest, Dialogue, Dungeon & Boss Architecture
+
+### 7.1 Quest Data & Objective Architecture (`QuestData`, `QuestObjectiveData`, `QuestRuntimeState`)
+* **Resource Definitions (`QuestData` & `QuestObjectiveData`):**
+  * Data statis disimpan dalam format `.tres` (`resources/quests/`).
+  * `QuestObjectiveData` mendukung 3 tipe objektif utama: `KILL_ENEMY`, `COLLECT_ITEM`, `TALK_TO_NPC`.
+  * Menampung `quest_id`, `title`, `description`, `quest_giver_id`, `prerequisite_quest_ids`, `reward_exp`, dan `reward_items`.
+  * Memiliki fungsi validasi invarian `is_valid()`.
+* **Decoupled Runtime Progress (`QuestRuntimeState`):**
+  * Status quest: `NOT_STARTED = 0`, `ACTIVE = 1`, `COMPLETED = 2`, `REWARD_CLAIMED = 3`.
+  * Progres tiap objektif dicatat dalam dictionary `objective_progress[objective_id]` yang terisolasi dari file resource `.tres` asli untuk mencegah pencemaran data statis.
+  * Clamping progres otomatis `[0, required_amount]`.
+  * Mendukung serialisasi `to_dict()` dan rekonstruksi `from_dict()` untuk save/load.
+
+### 7.2 Quest Management & Event-Driven Progress (`QuestManager`)
+* **Scoped Singleton:** Tersedia secara global melalui `QuestManager.get_instance()` dan instans lokal pada scene tree.
+* **Event Idempotency & Deduplication Cache:**
+  * Mendengarkan event global `enemy_defeated_at(enemy_id, position, exp_reward, loot_table, instance_id)`, `item_collected(item_id, quantity)`, dan `npc_interacted(npc_id)`.
+  * Cache `_processed_enemy_instances` dengan batas ukuran bounded mencegah duplikasi penghitungan kill dari instance musuh yang sama.
+  * Satu event dapat memajukan beberapa quest aktif yang memiliki target objektif yang sama secara simultan.
+* **Atomic Reward Claiming:**
+  * Sebelum reward didistribusikan, `QuestManager` melakukan evaluasi kapasitas inventaris secara komprehensif terhadap seluruh item hadiah (memperhitungkan penumpukan stack yang ada dan pembukaan slot kosong baru).
+  * Jika kapasitas tas tidak mencukupi, operasi klaim ditolak secara atomik (status tetap `COMPLETED`), memancarkan notifikasi peringatan dan mencegah hilangnya item.
+  * Jika ruang mencukupi, seluruh item dan EXP diberikan seketika, dan status bertransisi menjadi `REWARD_CLAIMED` (anti double-claim).
+
+### 7.3 NPC & Dialogue Architecture (`DialogueData`, `DialogueUI`, `NPC`)
+* **Dialogue Resource (`DialogueData`):** Menyimpan `speaker_name`, array dialog beruntun `lines`, serta trigger `quest_to_give` dan `quest_to_complete`.
+* **NPC Entity (`scenes/entities/npc.tscn`):**
+  * Memiliki `Interactable` (Layer 8: 128) dengan radius deteksi 24 px.
+  * Menangani pemilihan dialog secara stateful sesuai status quest pemain (default, active, completed).
+  * Memancarkan `EventBus.npc_interacted(npc_id)` saat berbicara dengan pemain.
+* **Dialogue UI (`DialogueUI`):**
+  * CanvasLayer 25 di atas gameplay world.
+  * Menampilkan nama pembicara, teks kalimat baris per baris, dan tombol navigasi 'Lanjut [E]' / 'Selesai'.
+  * Mengunci kendali pemain (`player.is_input_locked = true`) dan mengalihkan game state ke `GameState.DIALOGUE` selama percakapan berlangsung.
+  * Membuka kembali kendali pemain dan memberikan quest secara otomatis saat dialog selesai.
+
+### 7.4 Dungeon Door & Key Mechanics (`DungeonDoor`)
+* **Dungeon Key Resource (`resources/items/dungeon_key.tres`):** Item bertipe `QUEST` dengan rarity `RARE`.
+* **Dungeon Door (`scenes/objects/dungeon_door.tscn`):**
+  * Terintegrasi dengan `InteractionComponent` dan `InventoryManager`.
+  * Pintu terkunci secara default. Jika pemain berinteraksi tanpa kunci, pintu memberikan floating text peringatan dan tidak berpindah scene.
+  * Jika pemain memiliki kunci, pintu terbuka, mengonsumsi 1 kunci (jika `consumes_key = true`), dan memicu transisi scene aman melalui `SceneManager.change_scene_with_spawn()` menuju `scenes/dungeon/dungeon_room.tscn`.
+  * Proteksi transisi mencegah pemanggilan ganda selama perpindahan scene sedang berlangsung.
+
+### 7.5 Two-Phase Boss Encounter (`BossEnemy`)
+* **Spesifikasi Boss (`scenes/enemy/boss_enemy.tscn`):**
+  * Mewarisi `BaseEnemy`, `enemy_id = &"boss_gorgon"`, 200 HP, 20 Base ATK, 4 DEF, 500 EXP.
+  * Drop table khusus `boss_gorgon_loot.tres` (100% Iron Sword, 2-3x Health Potion, 3-5x Slime Jelly).
+* **Two-Phase Enrage Transition:**
+  * Terpicu otomatis satu kali ketika HP turun $\le 50\%$ (HP $\le 100$).
+  * Fase 2 (Enrage): Kecepatan gerak meningkat menjadi 75.0 px/s, damage serang meningkat menjadi 30, dan cooldown serang berkurang menjadi 0.7s.
+  * Efek visual aura merah (`phase_2_modulate = Color(1.3, 0.45, 0.45, 1.0)`) via Tween.
+  * Memancarkan sinyal `enraged` dan `phase_changed(2)`.
+  * Mempertahankan 100% kompatibilitas dengan siklus kematian `BaseEnemy._on_died()`, memancarkan sinyal kekalahan tunggal tanpa reward ganda.
+
+### 7.6 Quest UI Architecture (`QuestUI`)
+* **CanvasLayer 24:**
+  * Toggle via keyboard shortcut 'Q' (`quest_log`) atau tombol touchscreen `%QuestButton`.
+  * Sistem tab terpisah: Quest Aktif vs Quest Selesai.
+  * Tampilan rincian quest: judul, pemberi tugas, narasi deskripsi, checklist objektif status dinamis (`[✓]` hijau atau `[ ]` putih), dan preview hadiah.
+  * Tombol interaktif "Klaim Hadiah" yang otomatis aktif ketika quest berstatus `COMPLETED`.
+  * Toast notification bar di bagian atas layar untuk pembaruan quest baru, quest selesai, dan klaim hadiah.
+
+---
+
+## 8. Input System (Cross-Platform)
 
 Game mendukung kendali transparan antara Desktop (Keyboard/Mouse), Gamepad, dan Mobile (Touchscreen):
 

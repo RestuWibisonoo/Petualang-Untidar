@@ -32,6 +32,9 @@
 | **ADR-020** | Inventory Stacking, Atomic Swapping & Capacity Mechanics | **ADOPTED** | 2026-11-07 |
 | **ADR-021** | Character Stats Composition & Dynamic Combat Recalculation | **ADOPTED** | 2026-11-07 |
 | **ADR-022** | Event-Driven Loot Spawner & Single-Pickup Ground Item Architecture | **ADOPTED** | 2026-11-07 |
+| **ADR-023** | Decoupled Runtime Quest State, Event Idempotency & Multi-Slot Atomic Reward Claims | **ADOPTED** | 2026-11-08 |
+| **ADR-024** | Stateless Dialogue Data, Layer 25 DialogueUI & Modal Player Input Lock | **ADOPTED** | 2026-11-08 |
+| **ADR-025** | Dungeon Door Key Validation, Inventory Consumption & Two-Phase Boss Encounter | **ADOPTED** | 2026-11-08 |
 
 ---
 
@@ -350,5 +353,51 @@
   2. Ground rejection dan partial pickup melindungi barang pemain dari hilang sia-sia akibat inventaris penuh.
   3. Single-pickup lock debounce mencegah pengambilan ganda saat area overlap terpicu beruntun.
 * **Konsekuensi:** Semua scene musuh harus memiliki properti `exp_reward` dan referensi `loot_table`.
+
+---
+
+### ADR-023: Decoupled Runtime Quest State, Event Idempotency & Multi-Slot Atomic Reward Claims
+
+* **Konteks:** Sistem quest membutuhkan penyimpanan progres yang dinamis (jumlah musuh dibunuh, item dikumpulkan, NPC diajak bicara) tanpa mengubah atau mencemari Custom Resource `QuestData` (.tres) statis pada disk, serta harus tahan terhadap lonjakan event duplikat dan kegagalan parsial saat inventaris pemain penuh.
+* **Keputusan:**
+  1. `QuestData` dan `QuestObjectiveData` murni sebagai data blueprint statis (`.tres`), sedangkan progres runtime dicatat dalam objek terpisah `QuestRuntimeState` (`status`, `objective_progress`).
+  2. `QuestManager` mendengarkan `EventBus` (`enemy_defeated_at`, `item_collected`, `npc_interacted`) dengan cache deduplikasi bounded (`_processed_enemy_instances`) berbasis `instance_id`.
+  3. Klaim hadiah bersifat atomik: dilakukan simulasi penghitungan slot inventaris yang dibutuhkan secara simultan (memperhitungkan penumpukan stack item sejenis yang ada dan pembukaan slot kosong baru). Jika ruang tidak cukup, seluruh klaim ditolak tanpa memberikan EXP maupun item, status quest tetap `COMPLETED`, dan memunculkan notifikasi peringatan.
+* **Alasan Pemilihan:**
+  1. Menjaga integritas file `.tres` agar tidak berubah saat runtime atau corrupt saat export ke Web/Android.
+  2. Mencegah eksploit duplikasi event kill saat beberapa hitbox bertabrakan dalam interval singkat.
+  3. Melindungi pemain dari kehilangan reward quest (item hilang karena tas penuh).
+* **Konsekuensi:** Seluruh pengecekan progres quest harus dilakukan melalui `QuestManager`.
+
+---
+
+### ADR-024: Stateless Dialogue Data, Layer 25 DialogueUI & Modal Player Input Lock
+
+* **Konteks:** Diperlukan sistem interaksi percakapan NPC yang ringan, dapat menampilkan teks naratif multiline, mendukung input keyboard maupun layar sentuh, dan mencegah pemain bergerak atau memicu aksi tempur saat percakapan berlangsung, tanpa membangun dialogue tree yang terlalu kompleks (over-engineering).
+* **Keputusan:**
+  1. Menggunakan resource `DialogueData` sederhana (`speaker_name`, `lines: Array[String]`, trigger `quest_to_give` & `quest_to_complete`).
+  2. `DialogueUI` ditempatkan pada CanvasLayer 25 (di atas gameplay HUD).
+  3. Saat dialog dibuka, game state dialihkan ke `GameState.DIALOGUE` dan `player.is_input_locked = true` diaktifkan, memblokir input pergerakan, serang, roll, dan interaksi.
+  4. Saat percakapan selesai, kendali pemain dipulihkan secara instan, dialog otomatis ditutup, dan quest pemicu diterima oleh `QuestManager`.
+* **Alasan Pemilihan:**
+  1. Memberikan fokus cerita yang imersif tanpa membiarkan karakter terdistraksi pergerakan fisik.
+  2. Menyediakan antarmuka yang ramah tombol sentuh dan keyboard ('E'/Space/Enter).
+* **Konsekuensi:** Semua interaksi dengan NPC dialihkan melalui `DialogueUI`.
+
+---
+
+### ADR-025: Dungeon Door Key Validation, Inventory Consumption & Two-Phase Boss Encounter
+
+* **Konteks:** Diperlukan mekanisme penjelajahan dungeon di mana pemain harus memiliki item kunci tertentu (`dungeon_key`) untuk membuka pintu dungeon, serta pertarungan boss yang menantang dengan fase tempur bertingkat.
+* **Keputusan:**
+  1. `DungeonDoor` memeriksa keberadaan `required_key_id` pada `InventoryManager` pemain. Jika tidak ada, interaksi dibatalkan secara aman dan memunculkan floating text peringatan. Jika ada, kunci dikonsumsi dan transisi scene dipicu via `SceneManager.change_scene_with_spawn()`.
+  2. `BossEnemy` mewarisi `BaseEnemy`, memperkenalkan 2 fase tempur:
+     - Fase 1: Kecepatan 50.0 px/s, Damage 20, Cooldown 1.2s.
+     - Fase 2 (Enrage): Terpicu otomatis saat HP $\le 50\%$ (HP $\le 100$). Kecepatan meningkat menjadi 75.0 px/s, Damage meningkat menjadi 30, Cooldown serang berkurang menjadi 0.7s, dengan modulasi visual aura merah.
+     - Siklus kematian memancarkan sinyal `enemy_defeated_at` tunggal tanpa risiko duplikasi drop/EXP.
+* **Alasan Pemilihan:**
+  1. Memberikan gating eksplorasi yang solid melalui reward quest dan inventory progression.
+  2. Menghadirkan dinamika pertempuran boss yang menegangkan dan terikat kuat dengan sistem combat Phase 4 dan sistem loot Phase 5.
+* **Konsekuensi:** Level dungeon harus memiliki pintu keluar (`ExitDoor`) yang terhubung kembali ke overworld.
 
 

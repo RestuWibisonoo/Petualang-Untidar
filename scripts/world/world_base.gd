@@ -57,6 +57,30 @@ func _ready() -> void:
 			var inv_ui := inv_scene.instantiate()
 			$HUD.add_child(inv_ui)
 
+	# Ensure DialogueUI exists in HUD
+	if not get_node_or_null("HUD/DialogueUI") and has_node("HUD"):
+		var dia_scene: PackedScene = load("res://scenes/ui/dialogue_ui.tscn")
+		if dia_scene:
+			var dia_ui := dia_scene.instantiate()
+			$HUD.add_child(dia_ui)
+
+	# Ensure QuestUI exists in HUD
+	if not get_node_or_null("HUD/QuestUI") and has_node("HUD"):
+		var quest_scene: PackedScene = load("res://scenes/ui/quest_ui.tscn")
+		if quest_scene:
+			var quest_ui := quest_scene.instantiate()
+			$HUD.add_child(quest_ui)
+
+	# Register default quests into QuestManager if empty
+	var qm := QuestManager.get_instance()
+	if qm and qm.get_all_quests().is_empty():
+		var q1: QuestData = load("res://resources/quests/quest_first_steps.tres")
+		if q1:
+			qm.register_quest(q1)
+		var q2: QuestData = load("res://resources/quests/quest_dungeon_boss.tres")
+		if q2:
+			qm.register_quest(q2)
+
 	# Ensure LootSpawner exists in level
 	if not get_node_or_null("LootSpawner"):
 		var spawner := LootSpawner.new()

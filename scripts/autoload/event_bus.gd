@@ -21,10 +21,13 @@ signal inventory_updated
 signal equipment_changed(slot: StringName, item_data: Resource)
 
 # --- Quest & World Signals ---
+signal quest_accepted(quest_id: StringName)
 signal quest_progress_updated(quest_id: StringName, current_step: int, total_steps: int)
 signal quest_completed(quest_id: StringName)
+signal quest_reward_claimed(quest_id: StringName)
 signal enemy_defeated(enemy_id: StringName)
 signal enemy_defeated_at(enemy_id: StringName, position: Vector2, exp_reward: int, loot_table: LootTable, enemy_instance_id: int)
+signal npc_interacted(npc_id: StringName)
 
 # --- State & Flow Signals ---
 signal game_state_changed(previous_state: int, new_state: int)

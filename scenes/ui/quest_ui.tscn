@@ -1,0 +1,243 @@
+[gd_scene format=3 uid="uid://cquestui001"]
+
+[ext_resource type="Script" path="res://scripts/ui/quest_ui.gd" id="1_questui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.117647, 0.133333, 0.176471, 0.941176)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.243137, 0.278431, 0.34902, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
+bg_color = Color(0.180392, 0.203922, 0.270588, 1)
+border_width_bottom = 1
+border_color = Color(0.243137, 0.278431, 0.34902, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
+bg_color = Color(0.141176, 0.160784, 0.215686, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.380392, 0.658824, 0.890196, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="QuestUI" type="CanvasLayer"]
+layer = 24
+script = ExtResource("1_questui")
+
+[node name="MainPanel" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Backdrop" type="ColorRect" parent="MainPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.4)
+
+[node name="PanelContainer" type="PanelContainer" parent="MainPanel"]
+custom_minimum_size = Vector2(500, 270)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -135.0
+offset_right = 250.0
+offset_bottom = 135.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="MainPanel/PanelContainer"]
+layout_mode = 2
+
+[node name="HeaderPanel" type="PanelContainer" parent="MainPanel/PanelContainer/VBox"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HBox" type="HBoxContainer" parent="MainPanel/PanelContainer/VBox/HeaderPanel"]
+layout_mode = 2
+
+[node name="Margin" type="Control" parent="MainPanel/PanelContainer/VBox/HeaderPanel/HBox"]
+custom_minimum_size = Vector2(8, 0)
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MainPanel/PanelContainer/VBox/HeaderPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 11
+text = "CATATAN QUEST (QUEST LOG)"
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="MainPanel/PanelContainer/VBox/HeaderPanel/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(22, 18)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "X"
+
+[node name="TabHBox" type="HBoxContainer" parent="MainPanel/PanelContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TabActiveButton" type="Button" parent="MainPanel/PanelContainer/VBox/TabHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "Quest Aktif"
+
+[node name="TabCompletedButton" type="Button" parent="MainPanel/PanelContainer/VBox/TabHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "Quest Selesai"
+
+[node name="ContentHBox" type="HBoxContainer" parent="MainPanel/PanelContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LeftMargin" type="Control" parent="MainPanel/PanelContainer/VBox/ContentHBox"]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+
+[node name="QuestListSection" type="VBoxContainer" parent="MainPanel/PanelContainer/VBox/ContentHBox"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainPanel/PanelContainer/VBox/ContentHBox/QuestListSection"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="QuestListContainer" type="VBoxContainer" parent="MainPanel/PanelContainer/VBox/ContentHBox/QuestListSection/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="VSeparator" type="VSeparator" parent="MainPanel/PanelContainer/VBox/ContentHBox"]
+layout_mode = 2
+
+[node name="DetailSection" type="VBoxContainer" parent="MainPanel/PanelContainer/VBox/ContentHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="QuestTitleLabel" type="Label" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_font_sizes/font_size = 11
+text = "Pilih Quest"
+
+[node name="QuestGiverLabel" type="Label" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 8
+
+[node name="QuestDescLabel" type="Label" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+autowrap_mode = 3
+
+[node name="HSeparator1" type="HSeparator" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+layout_mode = 2
+
+[node name="ObjectivesTitle" type="Label" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "Tujuan Quest:"
+
+[node name="ObjectivesContainer" type="VBoxContainer" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HSeparator2" type="HSeparator" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+layout_mode = 2
+
+[node name="RewardsTitle" type="Label" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "Hadiah Quest:"
+
+[node name="RewardsContainer" type="VBoxContainer" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Spacer" type="Control" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ClaimRewardButton" type="Button" parent="MainPanel/PanelContainer/VBox/ContentHBox/DetailSection"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Klaim Hadiah"
+
+[node name="RightMargin" type="Control" parent="MainPanel/PanelContainer/VBox/ContentHBox"]
+custom_minimum_size = Vector2(4, 0)
+layout_mode = 2
+
+[node name="BottomMargin" type="Control" parent="MainPanel/PanelContainer/VBox"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="NotificationPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(260, 32)
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -130.0
+offset_top = 16.0
+offset_right = 130.0
+offset_bottom = 48.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_toast")
+
+[node name="MarginContainer" type="MarginContainer" parent="NotificationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+
+[node name="NotificationLabel" type="Label" parent="NotificationPanel/MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+text = "Notifikasi Quest"
+horizontal_alignment = 1
+vertical_alignment = 1

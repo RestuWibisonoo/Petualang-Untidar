@@ -10,6 +10,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/touch_controls.tscn" id="8_sh802"]
 [ext_resource type="Script" path="res://scripts/ui/touch/touch_controls.gd" id="9_d6tbp"]
 [ext_resource type="Script" uid="uid://ddkmx1f6a11yx" path="res://scripts/world/world_base.gd" id="10_world_base"]
+[ext_resource type="PackedScene" path="res://scenes/objects/dungeon_door.tscn" id="11_dungeon_door"]
+[ext_resource type="PackedScene" path="res://scenes/entities/npc.tscn" id="12_npc"]
+[ext_resource type="Resource" path="res://resources/quests/quest_first_steps.tres" id="13_quest1"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_mgy7w"]
 size = Vector2(660, 20)
@@ -72,6 +75,19 @@ target_scene_path = "res://scenes/world/combat_arena.tscn"
 target_spawn_id = &"from_outdoor"
 door_label = "Masuk Arena Tempur"
 
+[node name="DungeonDoor" type="Node2D" parent="YSortEntities/Interactables" instance=ExtResource("11_dungeon_door")]
+y_sort_enabled = true
+position = Vector2(180, 40)
+target_scene_path = "res://scenes/dungeon/dungeon_room.tscn"
+target_spawn_id = &"dungeon_entrance"
+door_label = "Pintu Labirin Bawah Tanah"
+
+[node name="GuideNPC" type="CharacterBody2D" parent="YSortEntities/Interactables" instance=ExtResource("12_npc")]
+position = Vector2(-30, 20)
+npc_id = &"npc_guide"
+npc_name = "Pemandu Kampus"
+quest_to_offer = ExtResource("13_quest1")
+
 [node name="Tree1" type="StaticBody2D" parent="YSortEntities/Interactables" unique_id=1997151621 instance=ExtResource("7_dpe4d")]
 y_sort_enabled = true
 position = Vector2(-120, 20)
@@ -120,6 +136,9 @@ position = Vector2(0, -85)
 
 [node name="from_arena" type="Marker2D" parent="SpawnPoints"]
 position = Vector2(-150, 40)
+
+[node name="from_dungeon" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(150, 40)
 
 [node name="TouchControls" type="CanvasLayer" parent="." unique_id=1534716580 instance=ExtResource("8_sh802")]
 layer = 10

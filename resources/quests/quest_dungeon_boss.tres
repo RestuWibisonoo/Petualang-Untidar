@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/quest_data.gd" id="1_quest"]
+[ext_resource type="Script" path="res://scripts/resources/quest_objective_data.gd" id="2_obj"]
+[ext_resource type="Resource" path="res://resources/equipment/iron_sword.tres" id="3_sword"]
+
+[sub_resource type="Resource" id="Resource_boss_obj"]
+script = ExtResource("2_obj")
+objective_id = &"kill_boss"
+objective_type = 0
+target_id = &"boss_gorgon"
+required_amount = 1
+description = "Kalahkan Boss Gorgon Penjaga Labirin Untidar."
+
+[resource]
+script = ExtResource("1_quest")
+quest_id = &"quest_dungeon_boss"
+title = "Penjaga Labirin Untidar"
+description = "Gunakan Kunci Labirin untuk memasuki dungeon dan taklukkan Boss Gorgon Penjaga Labirin!"
+quest_giver_id = &"npc_guide"
+objectives = [SubResource("Resource_boss_obj")]
+reward_exp = 500
+reward_items = [{
+"item": ExtResource("3_sword"),
+"quantity": 1
+}]
+prerequisite_quest_ids = [&"quest_first_steps"]

@@ -211,7 +211,9 @@ func _on_died() -> void:
 	var pos := global_position
 	var inst_id := get_instance_id()
 	defeated.emit(enemy_id, pos)
-	var event_bus := get_node_or_null("/root/EventBus")
+	var event_bus: Node = null
+	if is_inside_tree():
+		event_bus = get_node_or_null("/root/EventBus")
 	if event_bus:
 		if event_bus.has_signal("enemy_defeated_at"):
 			event_bus.enemy_defeated_at.emit(enemy_id, pos, exp_reward, loot_table, inst_id)
@@ -228,5 +230,3 @@ func _on_died() -> void:
 			tween.chain().tween_callback(queue_free)
 		else:
 			queue_free()
-	else:
-		queue_free()

@@ -21,10 +21,12 @@ extends CharacterBody2D
 @onready var inventory_manager: InventoryManager = get_node_or_null("InventoryManager") as InventoryManager
 @onready var equipment_manager: EquipmentManager = get_node_or_null("EquipmentManager") as EquipmentManager
 @onready var character_stats: CharacterStats = get_node_or_null("CharacterStats") as CharacterStats
+@onready var quest_manager: QuestManager = get_node_or_null("QuestManager") as QuestManager
 
 var current_input_direction: Vector2 = Vector2.ZERO
 var last_movement_direction: Vector2 = Vector2.DOWN
 var touch_input_direction: Vector2 = Vector2.ZERO
+var is_input_locked: bool = false
 
 
 func _ready() -> void:
@@ -133,6 +135,17 @@ func _setup_progression_nodes() -> void:
 		equipment_manager.character_stats = character_stats
 		equipment_manager.modular_visuals = modular_visuals
 
+	if not quest_manager:
+		var existing_qm := QuestManager.get_instance()
+		if existing_qm:
+			quest_manager = existing_qm
+		elif has_node("QuestManager"):
+			quest_manager = $QuestManager as QuestManager
+		else:
+			quest_manager = QuestManager.new()
+			quest_manager.name = "QuestManager"
+			add_child(quest_manager)
+
 	if character_stats:
 		if not character_stats.stats_changed.is_connected(_on_character_stats_changed):
 			character_stats.stats_changed.connect(_on_character_stats_changed)
@@ -160,6 +173,9 @@ func heal(amount: int) -> void:
 
 
 func get_movement_input() -> Vector2:
+	if is_input_locked:
+		return Vector2.ZERO
+
 	# 1. Keyboard / Gamepad input (automatically deadzoned and normalized by Godot)
 	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 
@@ -204,11 +220,15 @@ func set_touch_input(touch_dir: Vector2) -> void:
 
 
 func trigger_dodge() -> void:
+	if is_input_locked:
+		return
 	if state_machine and (state_machine.get_current_state_name() == &"idle" or state_machine.get_current_state_name() == &"move"):
 		state_machine.transition_to(&"roll")
 
 
 func trigger_attack() -> void:
+	if is_input_locked:
+		return
 	if state_machine:
 		var cur := state_machine.get_current_state_name()
 		if cur == &"idle" or cur == &"move":
@@ -220,5 +240,7 @@ func trigger_attack() -> void:
 
 
 func trigger_interact() -> void:
+	if is_input_locked:
+		return
 	if interaction_component:
 		interaction_component.interact_with_current_target()

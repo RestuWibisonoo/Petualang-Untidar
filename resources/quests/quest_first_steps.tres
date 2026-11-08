@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/quest_data.gd" id="1_quest"]
+[ext_resource type="Script" path="res://scripts/resources/quest_objective_data.gd" id="2_obj"]
+[ext_resource type="Resource" path="res://resources/items/health_potion.tres" id="3_potion"]
+[ext_resource type="Resource" path="res://resources/items/dungeon_key.tres" id="4_key"]
+
+[sub_resource type="Resource" id="Resource_obj1"]
+script = ExtResource("2_obj")
+objective_id = &"kill_slimes"
+objective_type = 0
+target_id = &"dummy_slime"
+required_amount = 2
+description = "Kalahkan 2 Dummy Slime di arena atau area kampus."
+
+[sub_resource type="Resource" id="Resource_obj2"]
+script = ExtResource("2_obj")
+objective_id = &"collect_jelly"
+objective_type = 1
+target_id = &"slime_jelly"
+required_amount = 2
+description = "Kumpulkan 2 Slime Jelly dari monster."
+
+[sub_resource type="Resource" id="Resource_obj3"]
+script = ExtResource("2_obj")
+objective_id = &"talk_guide"
+objective_type = 2
+target_id = &"npc_guide"
+required_amount = 1
+description = "Lapor kembali kepada Pengawas Kampus (Prof. Untidar)."
+
+[resource]
+script = ExtResource("1_quest")
+quest_id = &"quest_first_steps"
+title = "Langkah Pertama Petualang"
+description = "Buktikan kemampuanmu kepada Pengawas Kampus dengan mengalahkan 2 Slime dan mengumpulkan 2 Slime Jelly, lalu lapor kembali."
+quest_giver_id = &"npc_guide"
+objectives = [SubResource("Resource_obj1"), SubResource("Resource_obj2"), SubResource("Resource_obj3")]
+reward_exp = 150
+reward_items = [{
+"item": ExtResource("3_potion"),
+"quantity": 1
+}, {
+"item": ExtResource("4_key"),
+"quantity": 1
+}]
+prerequisite_quest_ids = []
